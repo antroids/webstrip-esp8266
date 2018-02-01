@@ -65,6 +65,7 @@ cache:
 
 env:
 - PLATFORMIO_CI_SRC=src/webstrip.ino
+- PLATFORMIO_CI_SRC=src/BufferedNeoPixelBus.h
 
 install:
 - pip install -U platformio
