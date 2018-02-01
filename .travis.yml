@@ -53,3 +53,15 @@
 #
 # script:
 #     - platformio ci --lib="." --board=ID_1 --board=ID_2 --board=ID_N
+env:
+- PLATFORMIO_CI_SRC=src/webstrip.ino
+
+install:
+- pip install -U platformio
+- platformio lib -g install WifiManager
+- platformio lib -g install NeoPixelBus
+- platformio lib -g install ArduinoJson
+
+
+script:
+- platformio ci --board=nodemcuv2
