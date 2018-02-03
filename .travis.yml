@@ -1,77 +1,23 @@
-# Continuous Integration (CI) is the practice, in software
-# engineering, of merging all developer working copies with a shared mainline
-# several times a day < http://docs.platformio.org/page/ci/index.html >
-#
-# Documentation:
-#
-# * Travis CI Embedded Builds with PlatformIO
-#   < https://docs.travis-ci.com/user/integration/platformio/ >
-#
-# * PlatformIO integration with Travis CI
-#   < http://docs.platformio.org/page/ci/travis.html >
-#
-# * User Guide for `platformio ci` command
-#   < http://docs.platformio.org/page/userguide/cmd_ci.html >
-#
-#
-# Please choice one of the following templates (proposed below) and uncomment
-# it (remove "# " before each line) or use own configuration according to the
-# Travis CI documentation (see above).
-#
-
-
-#
-# Template #1: General project. Test it using existing `platformio.ini`.
-#
-
-# language: python
-# python:
-#     - "2.7"
-#
-# install:
-#     - pip install -U platformio
-#
-# script:
-#     - platformio run
-
-
-#
-# Template #2: The project is intended to by used as a library with examples
-#
-
-# language: python
-# python:
-#     - "2.7"
-#
-# env:
-#     - PLATFORMIO_CI_SRC=path/to/test/file.c
-#     - PLATFORMIO_CI_SRC=examples/file.ino
-#     - PLATFORMIO_CI_SRC=path/to/test/directory
-#
-# install:
-#     - pip install -U platformio
-#
-# script:
-#     - platformio ci --lib="." --board=ID_1 --board=ID_2 --board=ID_N
-
 language: python
 python:
-    - "2.7"
-
+- '2.7'
 sudo: false
 cache:
-    directories:
-        - "~/.platformio"
-
+  directories:
+  - "~/.platformio"
 env:
 - PLATFORMIO_CI_SRC=src
-
 install:
 - pip install -U platformio
 - platformio lib -g install WifiManager
 - platformio lib -g install NeoPixelBus
 - platformio lib -g install ArduinoJson
-
-
 script:
 - platformio ci --board=nodemcuv2
+deploy:
+  provider: s3
+  access_key_id: AKIAJ4OGDYB4N3RJJOLQ
+  secret_access_key:
+    secure: loZTT3cx92Kqqb/kmODoPfnkmOcS0wnQVTVWHsm7cDxyDGsyOSoB1E+caZ1Tz7faOteXnI/EyKRiSV8PM+L4BfiyVKG9FoaCaWfjFvehwguG1xxvtaffyDv5JVfq8iCEMcp05RDpHjpyMlRJIBg126xd7Uniyr3P/BfncFtfn8T3WreMpI4UIntc+sYtiRRdn4sBauzEh/FpIfJgmZdzRgqMMDOY+zqwy4bAjkRlQR4GceA8+02lgB+RcYuI2FZcrGy2Yy06pkZIVwVbdGdJlYCPgOErgtPnycWLey2L7Uo0pfaQsK8AbRqzP8QJW3RwfeetbU56BradRyieiGC72qSHWIaqWxxJGzm03Jrgt8NVMVJJboQEUx6ID+pi4hMlOQ14Ww0chB36l3sw/Rv4Mh2MorPUzldB6smqQF2qUtd5mWs9DkHRSqgRC3CF3fJTMe4WBvIVUV1c2xfwgUWyUHeV+1qdU8wsrjGPR1AjXYBVmRc+R5dL37vflyGl03z7bMUG0YkuIkaWBalCind9mc2XRMrJixwJbv3RSlDRtE2o8Vy3LrNvqU/ZrRCv8RxK7FNBNGmbUcuY9nk9szuuU2ixVcTB5ad/q7zb+l84ZI/RJs74IsiOivYNBjem65fSTvAKidG/rOP7Y452pJ+dFBePKcEMvffjXhrGyj6Z6zs=
+  bucket: antroids-webstrip
+  upload-dir: firmware
