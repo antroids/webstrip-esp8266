@@ -1,3 +1,6 @@
+#ifndef BUFFERED_NEO_PIXEL_BUS_H
+#define BUFFERED_NEO_PIXEL_BUS_H
+
 #include <NeoPixelBus.h>
 
 template <typename T_COLOR_FEATURE, typename T_METHOD> class BufferedNeoPixelBus : public NeoPixelBus<T_COLOR_FEATURE, T_METHOD> {
@@ -62,3 +65,5 @@ public:
     }
   }
 };
+
+#endif
