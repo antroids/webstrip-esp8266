@@ -36,7 +36,9 @@ void Animation::generateColors() {
   }
 }
 
-float Animation::calcProgress(const AnimationParam &param) { return activeAnimationProgressModes[mode->animationProgressMode](param.progress); }
+float Animation::calcProgress(const AnimationParam &param) {
+  return AnimationProgressMode::getFromIndex(mode->animationProgressMode)->calcProgress(param.progress);
+}
 
 void Animation::updateLedColorChangeAnimation(const AnimationParam &param) {
   float progress = calcProgress(param);

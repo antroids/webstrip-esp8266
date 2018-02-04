@@ -9,14 +9,16 @@
 #include <ESP8266mDNS.h>
 #include <WiFiManager.h> //https://github.com/tzapu/WiFiManager
 
+#include "Types.h"
+
 #include "animation/Animation.h"
-#include "animation/NoneAnimation.h"
-#include "animation/ShiftAnimation.h"
 #include "animation/FadeAnimation.h"
-#include "animation/RandPixelsAnimation.h"
-#include "animation/FlashPixelsAnimation.h"
-#include "animation/SolidFadeOutLoopAnimation.h"
 #include "animation/FadeOutLoopAnimation.h"
+#include "animation/FlashPixelsAnimation.h"
+#include "animation/NoneAnimation.h"
+#include "animation/RandPixelsAnimation.h"
+#include "animation/ShiftAnimation.h"
+#include "animation/SolidFadeOutLoopAnimation.h"
 
 #define MODE_JSON_FILE_PATH(INDEX) (String("/modes/mode") + String(INDEX) + String(".json"))
 #define OPTIONS_JSON_FILE_PATH "/web/options.json"
@@ -36,16 +38,6 @@
 #define ARG_INDEX "index"
 #define HTML_COLOR_LENGTH 10
 
-#define JSON_FIELD_INDEX "index"
-#define JSON_FIELD_DESCRIPTION "description"
-#define JSON_FIELD_COLORS "colors"
-#define JSON_FIELD_COLOR_SELECTION_MODE "colorSelectionMode"
-#define JSON_FIELD_ANIMATION_MODE "animationMode"
-#define JSON_FIELD_ANIMATION_SPEED "animationSpeed"
-#define JSON_FIELD_ANIMATION_PROGRESS_MODE "animationProgressMode"
-#define JSON_FIELD_ANIMATION_INTENSITY "animationIntensity"
-#define JSON_FIELD_ANIMATION_DIRECTION "animationDirection"
-
 #define JSON_FIELD_DOMAIN "domain"
 #define JSON_FIELD_DOMAIN_SIZE 32
 #define JSON_FIELD_PIXEL_COUNT "pixelCount"
@@ -53,29 +45,17 @@
 
 #define DOMAIN_POSTFIX ".local"
 
-typedef bool (*ErrorCallbackFunctionType)(const char *errorMessage);
+Animation *animations[] = {new NoneAnimation(),       new ShiftAnimation(),       new FadeAnimation(),
+                           new RandPixelsAnimation(), new FlashPixelsAnimation(), new SolidFadeOutLoopAnimation(),
+                           new FadeOutLoopAnimation()};
+
+AnimationProgressMode *animationProgressModes[] = {new LinearAnimationProgressMode(), new SinInAnimationProgressMode(), new SinOutAnimationProgressMode(),
+                                                   new SinInOutAnimationProgressMode()};
 
 struct WebStripOptions {
   uint16_t pixelCount = 32;
   char domain[JSON_FIELD_DOMAIN_SIZE] = "WebStrip";
   uint32_t port = 80;
-};
-
-Animation *activeAnimationModes[] = {
-  new NoneAnimation(),
-  new ShiftAnimation(),
-  new FadeAnimation(),
-  new RandPixelsAnimation(),
-  new FlashPixelsAnimation(),
-  new SolidFadeOutLoopAnimation(),
-  new FadeOutLoopAnimation()
-};
-
-uint16_t getAnimationModeIndex(Animation *mode) {
-  for (uint16_t i = 0; i < sizeof(activeAnimationModes) / sizeof(Animation); i++) {
-    if (activeAnimationModes[i] == mode)
-      return i;
-  }
 };
 
 WebStripOptions currentOptions;
@@ -91,7 +71,7 @@ uint16_t tempLedIndex = 0;
 // Initialized after reading saved options
 ESP8266WebServer *server;
 BufferedNeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> *strip;
-Animation *currentAnimation = activeAnimationModes[0];
+Animation *currentAnimation = Animation::getFromIndex(0);
 
 bool validateRange(JsonObject &json, const char *fieldName, int min, int max, ErrorCallbackFunctionType errorCallback);
 void SetRandomSeed();
@@ -104,8 +84,6 @@ void handleNotFound();
 void onOtaUpdate();
 bool updateJsonFromOptions(WebStripOptions *options, JsonObject &json, ErrorCallbackFunctionType errorCallback);
 bool updateOptionsFromJson(WebStripOptions *options, JsonObject &json, ErrorCallbackFunctionType errorCallback);
-bool updateJsonFromMode(LedStripMode *mode, JsonObject &json, ErrorCallbackFunctionType errorCallback);
-bool updateModeFromJson(LedStripMode *mode, JsonObject &json, ErrorCallbackFunctionType errorCallback);
 JsonObject &loadJsonFromFS(DynamicJsonBuffer *jsonBuffer, String path, ErrorCallbackFunctionType errorCallback);
 bool saveJsonToFS(JsonObject &json, String path, ErrorCallbackFunctionType errorCallback);
 bool loadOptionsFromFS();
@@ -137,15 +115,15 @@ void setup() {
   Serial.begin(115200);
   SetRandomSeed();
   SPIFFS.begin();
-  //Print root dir content
+  // Print root dir content
 
-  Dir dir = SPIFFS.openDir("/web/");
-  Serial.println("");
-  while (dir.next()) {
-      Serial.print(dir.fileName());
-      File f = dir.openFile("r");
-      Serial.println(f.size());
-  }
+  // Dir dir = SPIFFS.openDir("/web/");
+  // Serial.println("");
+  // while (dir.next()) {
+  //   Serial.print(dir.fileName());
+  //   File f = dir.openFile("r");
+  //   Serial.println(f.size());
+  // }
   if (!loadOptionsFromFS()) {
     log("Cannot load options from file, using predefined values");
   }
@@ -169,7 +147,7 @@ void loop() {
     ArduinoOTA.handle();
   } else {
     server->handleClient();
-currentAnimation->processAnimation();
+    currentAnimation->processAnimation();
   }
 }
 
@@ -188,9 +166,7 @@ void initLedStrip() {
   strip->Show();
 }
 
-void initAnimations() {
-  Animation::init(strip, &currentMode);
-}
+void initAnimations() { Animation::init(strip, &currentMode); }
 
 void initOTA() {
   ArduinoOTA.setHostname(currentOptions.domain);
@@ -246,7 +222,7 @@ void initDefaultMode() {
     DynamicJsonBuffer request;
     DynamicJsonBuffer jsonBuffer;
     JsonObject &json = loadJsonFromFS(&jsonBuffer, filepath, requestErrorHandler);
-    if (json != JsonObject::invalid() && updateModeFromJson(&currentMode, json, requestErrorHandler)) {
+    if (json != JsonObject::invalid() && currentMode.updateEntityFromJson(json, requestErrorHandler)) {
       setLedStripAnimationMode(0, currentMode.animationMode);
     }
   }
@@ -313,7 +289,7 @@ void onModePost() {
   DynamicJsonBuffer jsonBuffer;
   JsonObject &request = jsonBuffer.parseObject(server->arg(ARG_JSON));
   uint16_t previousAnimationMode = currentMode.animationMode;
-  if (updateModeFromJson(&currentMode, request, requestErrorHandler)) {
+  if (currentMode.updateEntityFromJson(request, requestErrorHandler)) {
     setLedStripAnimationMode(previousAnimationMode, currentMode.animationMode);
     onModeGet();
   }
@@ -322,7 +298,7 @@ void onModePost() {
 void onModeGet() {
   DynamicJsonBuffer jsonBuffer;
   JsonObject &response = jsonBuffer.createObject();
-  if (updateJsonFromMode(&currentMode, response, requestErrorHandler)) {
+  if (currentMode.updateJsonFromEntity(response, requestErrorHandler)) {
     sendJson(response, HTTP_CODE_OK);
   }
 }
@@ -339,7 +315,7 @@ void onFilePost() {
   DynamicJsonBuffer jsonBuffer;
   JsonObject &modeJson = jsonBuffer.createObject();
 
-  if (updateJsonFromMode(&currentMode, modeJson, requestErrorHandler) && saveJsonToFS(modeJson, filepath, requestErrorHandler)) {
+  if (currentMode.updateJsonFromEntity(modeJson, requestErrorHandler) && saveJsonToFS(modeJson, filepath, requestErrorHandler)) {
     sendJson(modeJson, HTTP_CODE_OK);
   }
 }
@@ -359,7 +335,7 @@ void onFileGet() {
 
   JsonObject &json = loadJsonFromFS(&jsonBuffer, filepath, requestErrorHandler);
   uint16_t prevAnimationMode = currentMode.animationMode;
-  if (json != JsonObject::invalid() && updateModeFromJson(&currentMode, json, requestErrorHandler)) {
+  if (json != JsonObject::invalid() && currentMode.updateEntityFromJson(json, requestErrorHandler)) {
     setLedStripAnimationMode(prevAnimationMode, currentMode.animationMode);
     sendJson(json, HTTP_CODE_OK);
   }
@@ -406,75 +382,6 @@ JsonObject &loadJsonFromFS(DynamicJsonBuffer *jsonBuffer, String path, ErrorCall
   JsonObject &json = jsonBuffer->parseObject(jsonFile);
   jsonFile.close();
   return json;
-}
-
-bool updateModeFromJson(LedStripMode *mode, JsonObject &json, ErrorCallbackFunctionType errorCallback) {
-  if (json.containsKey(JSON_FIELD_DESCRIPTION)) {
-    String description = json[JSON_FIELD_DESCRIPTION];
-    description.toCharArray(mode->description, DESCRIPTION_SIZE);
-  }
-  if (json.containsKey(JSON_FIELD_COLOR_SELECTION_MODE)) {
-    if (!validateRange(json, JSON_FIELD_COLOR_SELECTION_MODE, 0, COLOR_SELECTION_MODE_COUNT - 1, errorCallback))
-      return false;
-    mode->colorSelectionMode = json[JSON_FIELD_COLOR_SELECTION_MODE];
-  }
-  if (json.containsKey(JSON_FIELD_ANIMATION_MODE)) {
-    if (!validateRange(json, JSON_FIELD_ANIMATION_MODE, 0, sizeof(activeAnimationModes) / sizeof(Animation*), errorCallback))
-      return false;
-    mode->animationMode = json[JSON_FIELD_ANIMATION_MODE];
-  }
-  if (json.containsKey(JSON_FIELD_ANIMATION_PROGRESS_MODE)) {
-    if (!validateRange(json, JSON_FIELD_ANIMATION_PROGRESS_MODE, 0, sizeof(activeAnimationProgressModes) / sizeof(AnimationProgressModifierFunctionType),
-                       errorCallback))
-      return false;
-    mode->animationProgressMode = json[JSON_FIELD_ANIMATION_PROGRESS_MODE];
-  }
-  if (json.containsKey(JSON_FIELD_ANIMATION_SPEED)) {
-    if (!validateRange(json, JSON_FIELD_ANIMATION_SPEED, 0, 255, errorCallback))
-      return false;
-    mode->animationSpeed = json[JSON_FIELD_ANIMATION_SPEED];
-  }
-  if (json.containsKey(JSON_FIELD_ANIMATION_INTENSITY)) {
-    if (!validateRange(json, JSON_FIELD_ANIMATION_INTENSITY, 0, 255, errorCallback))
-      return false;
-    mode->animationIntensity = json[JSON_FIELD_ANIMATION_INTENSITY];
-  }
-  if (json.containsKey(JSON_FIELD_ANIMATION_DIRECTION)) {
-    mode->animationDirection = json[JSON_FIELD_ANIMATION_DIRECTION];
-  }
-  if (json.containsKey(JSON_FIELD_COLORS)) {
-    if (!json.is<JsonArray>(JSON_FIELD_COLORS) && !errorCallback("Json prop colors must be array"))
-      return false;
-    HtmlColor htmlColor;
-    JsonArray &colorsArray = (JsonArray &)json[JSON_FIELD_COLORS];
-    for (int i = 0; i < colorsArray.size(); i++) {
-      String colorCode = colorsArray[i];
-      htmlColor.Parse<HtmlColorNames>(colorCode);
-      mode->colors[i] = RgbColor(htmlColor);
-    }
-    mode->colorsCount = colorsArray.size();
-  }
-
-  return true;
-}
-
-bool updateJsonFromMode(LedStripMode *mode, JsonObject &json, ErrorCallbackFunctionType errorCallback) {
-  char colorBuffer[HTML_COLOR_LENGTH];
-  JsonArray &colorsArray = json.createNestedArray(JSON_FIELD_COLORS);
-  for (int i = 0; i < mode->colorsCount; i++) {
-    HtmlColor htmlColor(mode->colors[i]);
-    htmlColor.ToNumericalString(colorBuffer, HTML_COLOR_LENGTH);
-    colorsArray.add(String(colorBuffer));
-  }
-  json[JSON_FIELD_INDEX] = mode->index;
-  json[JSON_FIELD_DESCRIPTION] = mode->description;
-  json[JSON_FIELD_COLOR_SELECTION_MODE] = mode->colorSelectionMode;
-  json[JSON_FIELD_ANIMATION_MODE] = mode->animationMode;
-  json[JSON_FIELD_ANIMATION_SPEED] = mode->animationSpeed;
-  json[JSON_FIELD_ANIMATION_INTENSITY] = mode->animationIntensity;
-  json[JSON_FIELD_ANIMATION_DIRECTION] = mode->animationDirection;
-  json[JSON_FIELD_ANIMATION_PROGRESS_MODE] = mode->animationProgressMode;
-  return true;
 }
 
 bool updateOptionsFromJson(WebStripOptions *options, JsonObject &json, ErrorCallbackFunctionType errorCallback) {
@@ -537,9 +444,9 @@ void sendJson(JsonObject &json, const int httpCode) {
 }
 
 void setLedStripAnimationMode(const uint16_t prevLedStripAnimationMode, const uint16_t newLedStripAnimationMode) {
-  activeAnimationModes[prevLedStripAnimationMode]->stop();
-  activeAnimationModes[newLedStripAnimationMode]->start();
-  currentAnimation = activeAnimationModes[newLedStripAnimationMode];
+  Animation::getFromIndex(prevLedStripAnimationMode)->stop();
+  Animation::getFromIndex(newLedStripAnimationMode)->start();
+  currentAnimation = Animation::getFromIndex(newLedStripAnimationMode);
 }
 
 void SetRandomSeed() {
@@ -551,16 +458,4 @@ void SetRandomSeed() {
     delay(1);
   }
   randomSeed(seed);
-}
-
-bool validateRange(JsonObject &json, const char *fieldName, int min, int max, ErrorCallbackFunctionType errorCallback) {
-  int value = json[fieldName];
-  char buf[128];
-  if (value < min || value > max) {
-    String msg = String("Value '") + String(value) + String("' in field '") + String(fieldName) + String("' must be in range [") + String(min) + String(",") +
-                 String(max) + String("]");
-    msg.toCharArray(buf, 128);
-    return errorCallback(buf);
-  }
-  return true;
 }

@@ -1,8 +1,9 @@
 #ifndef ANIMATION_H
 #define ANIMATION_H
 
-#include "AnimationProgressMode.h"
-#include "LedStripMode.h"
+#include "../BufferedNeoPixelBus.h"
+#include "../domain/AnimationProgressMode.h"
+#include "../domain/Index.h"
 #include <NeoPixelAnimator.h>
 
 #define GENERATE_RANDOM_COLOR (HsbColor(((float)random(360)) / 360, 1, 0.5))
@@ -12,7 +13,9 @@ struct LedColorAnimationState {
   RgbColor endColor;
 };
 
-class Animation {
+class LedStripMode;
+
+class Animation : public Index<Animation, 32> {
 public:
   static NeoPixelAnimator *animations;
   static LedColorAnimationState *ledColorAnimationState;
@@ -39,6 +42,10 @@ public:
   virtual void update(const AnimationParam &param);
   virtual void stop();
   virtual uint16_t getDuration();
+
+  Animation() : Index(this){};
 };
+
+#include "../domain/LedStripMode.h"
 
 #endif
