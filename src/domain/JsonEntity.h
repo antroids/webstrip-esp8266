@@ -15,9 +15,7 @@ protected:
     int value = json[fieldName];
     char buf[128];
     if (value < min || value > max) {
-      String msg = String("Value '") + String(value) + String("' in field '") + String(fieldName) + String("' must be in range [") + String(min) + String(",") +
-                   String(max) + String("]");
-      msg.toCharArray(buf, 128);
+      sprintf(buf, "Value '%i' in field '%s' must be in range [%i, %i]", value, fieldName, min, max);
       return errorCallback(buf);
     }
     return true;

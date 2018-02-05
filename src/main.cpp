@@ -38,7 +38,6 @@
 
 #define ARG_JSON "data"
 #define ARG_INDEX "index"
-#define HTML_COLOR_LENGTH 10
 
 #define DOMAIN_POSTFIX ".local"
 
@@ -81,8 +80,9 @@ bool saveJsonToFS(JsonObject &json, String path, ErrorCallbackFunctionType error
 bool loadOptionsFromFS();
 void onOptionsPost();
 void onOptionsGet();
-void onFileGet();
-void onFilePost();
+void onSaveModeGet();
+void onLoadModeGet();
+void onListModesGet();
 void onModeGet();
 void onModePost();
 void onIndexMinJsGz();
@@ -236,8 +236,9 @@ void setupUrlMappings() {
   server->on("/index.min.js.gz", onIndexMinJsGz);
   server->on("/api/mode", HTTP_POST, onModePost);
   server->on("/api/mode", HTTP_GET, onModeGet);
-  server->on("/api/file", HTTP_POST, onFilePost);
-  server->on("/api/file", HTTP_GET, onFileGet);
+  server->on("/api/saveMode", HTTP_GET, onSaveModeGet);
+  server->on("/api/loadMode", HTTP_GET, onLoadModeGet);
+  server->on("/api/listModes", HTTP_GET, onListModesGet);
   server->on("/api/options", HTTP_POST, onOptionsPost);
   server->on("/api/options", HTTP_GET, onOptionsGet);
   server->on("/api/otaUpdate", onOtaUpdate);
@@ -296,7 +297,7 @@ void onModeGet() {
 }
 
 // Creates new config for given Index or overrides existing
-void onFilePost() {
+void onSaveModeGet() {
   if (!server->hasArg(ARG_INDEX)) {
     sendError("Index argument not found", HTTP_CODE_WRONG_REQUEST);
     return;
@@ -312,7 +313,7 @@ void onFilePost() {
   }
 }
 
-void onFileGet() {
+void onLoadModeGet() {
   if (!server->hasArg(ARG_INDEX)) {
     sendError("Index argument not found", HTTP_CODE_WRONG_REQUEST);
     return;
@@ -331,6 +332,30 @@ void onFileGet() {
     setLedStripAnimationMode(prevAnimationMode, currentMode.animationMode);
     sendJson(json, HTTP_CODE_OK);
   }
+}
+
+void onListModesGet() {
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject &response = jsonBuffer.createObject();
+  JsonArray &modes = response.createNestedArray("modes");
+  char descriptionsBuffer[MODE_INDEX_MAX + 1][MODE_DESCRIPTION_SIZE];
+
+  for (uint16_t i = 0; i < MODE_INDEX_MAX; i++) {
+    String filepath = MODE_JSON_FILE_PATH(i);
+    if (SPIFFS.exists(filepath)) {
+      DynamicJsonBuffer loadModeBuffer;
+      JsonObject &json = loadJsonFromFS(&loadModeBuffer, filepath, requestErrorHandler);
+      if (json == JsonObject::invalid()) {
+        return;
+      }
+      JsonObject &mode = modes.createNestedObject();
+      mode["index"] = i;
+      String description = json["description"];
+      description.toCharArray(descriptionsBuffer[i], MODE_DESCRIPTION_SIZE);
+      mode["description"] = descriptionsBuffer[i];
+    }
+  }
+  sendJson(response, HTTP_CODE_OK);
 }
 
 void onOptionsGet() {
