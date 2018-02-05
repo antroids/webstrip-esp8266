@@ -20,6 +20,8 @@
 #include "animation/ShiftAnimation.h"
 #include "animation/SolidFadeOutLoopAnimation.h"
 
+#include "domain/Options.h"
+
 #define MODE_JSON_FILE_PATH(INDEX) (String("/modes/mode") + String(INDEX) + String(".json"))
 #define OPTIONS_JSON_FILE_PATH "/web/options.json"
 #define INDEX_HTML_FILE_PATH "/web/index.html"
@@ -38,11 +40,6 @@
 #define ARG_INDEX "index"
 #define HTML_COLOR_LENGTH 10
 
-#define JSON_FIELD_DOMAIN "domain"
-#define JSON_FIELD_DOMAIN_SIZE 32
-#define JSON_FIELD_PIXEL_COUNT "pixelCount"
-#define JSON_FIELD_PORT "port"
-
 #define DOMAIN_POSTFIX ".local"
 
 Animation *animations[] = {new NoneAnimation(),       new ShiftAnimation(),       new FadeAnimation(),
@@ -52,13 +49,10 @@ Animation *animations[] = {new NoneAnimation(),       new ShiftAnimation(),     
 AnimationProgressMode *animationProgressModes[] = {new LinearAnimationProgressMode(), new SinInAnimationProgressMode(), new SinOutAnimationProgressMode(),
                                                    new SinInOutAnimationProgressMode()};
 
-struct WebStripOptions {
-  uint16_t pixelCount = 32;
-  char domain[JSON_FIELD_DOMAIN_SIZE] = "WebStrip";
-  uint32_t port = 80;
-};
+ColorSelectionMode *colorSelectionModes[] = {new AscPaletteColorSelectionMode(), new RandPaletteColorSelectionMode(), new RandColorSelectionMode(),
+                                             new AscPaletteStretchColorSelectionMode()};
 
-WebStripOptions currentOptions;
+Options currentOptions;
 LedStripMode currentMode;
 
 bool otaMode = false;
@@ -82,8 +76,6 @@ void sendError(const char *message, int httpCode);
 void setupResponseHeaders();
 void handleNotFound();
 void onOtaUpdate();
-bool updateJsonFromOptions(WebStripOptions *options, JsonObject &json, ErrorCallbackFunctionType errorCallback);
-bool updateOptionsFromJson(WebStripOptions *options, JsonObject &json, ErrorCallbackFunctionType errorCallback);
 JsonObject &loadJsonFromFS(DynamicJsonBuffer *jsonBuffer, String path, ErrorCallbackFunctionType errorCallback);
 bool saveJsonToFS(JsonObject &json, String path, ErrorCallbackFunctionType errorCallback);
 bool loadOptionsFromFS();
@@ -344,7 +336,7 @@ void onFileGet() {
 void onOptionsGet() {
   DynamicJsonBuffer jsonBuffer;
   JsonObject &response = jsonBuffer.createObject();
-  if (updateJsonFromOptions(&currentOptions, response, requestErrorHandler)) {
+  if (currentOptions.updateJsonFromEntity(response, requestErrorHandler)) {
     sendJson(response, HTTP_CODE_OK);
   }
 }
@@ -356,7 +348,7 @@ void onOptionsPost() {
   }
   DynamicJsonBuffer jsonBuffer;
   JsonObject &request = jsonBuffer.parseObject(server->arg(ARG_JSON));
-  if (updateOptionsFromJson(&currentOptions, request, requestErrorHandler) && updateJsonFromOptions(&currentOptions, request, requestErrorHandler) &&
+  if (currentOptions.updateEntityFromJson(request, requestErrorHandler) && currentOptions.updateJsonFromEntity(request, requestErrorHandler) &&
       saveJsonToFS(request, OPTIONS_JSON_FILE_PATH, requestErrorHandler)) {
     onOptionsGet();
     delay(1000);
@@ -367,7 +359,7 @@ void onOptionsPost() {
 bool loadOptionsFromFS() {
   DynamicJsonBuffer jsonBuffer;
   JsonObject &json = loadJsonFromFS(&jsonBuffer, OPTIONS_JSON_FILE_PATH, logErrorHandler);
-  return json != JsonObject::invalid() && updateOptionsFromJson(&currentOptions, json, logErrorHandler);
+  return json != JsonObject::invalid() && currentOptions.updateEntityFromJson(json, logErrorHandler);
 }
 
 bool saveJsonToFS(JsonObject &json, String path, ErrorCallbackFunctionType errorCallback) {
@@ -382,27 +374,6 @@ JsonObject &loadJsonFromFS(DynamicJsonBuffer *jsonBuffer, String path, ErrorCall
   JsonObject &json = jsonBuffer->parseObject(jsonFile);
   jsonFile.close();
   return json;
-}
-
-bool updateOptionsFromJson(WebStripOptions *options, JsonObject &json, ErrorCallbackFunctionType errorCallback) {
-  if (json.containsKey(JSON_FIELD_PIXEL_COUNT)) {
-    options->pixelCount = json[JSON_FIELD_PIXEL_COUNT];
-  }
-  if (json.containsKey(JSON_FIELD_PORT)) {
-    options->port = json[JSON_FIELD_PORT];
-  }
-  if (json.containsKey(JSON_FIELD_DOMAIN)) {
-    String domain = json[JSON_FIELD_DOMAIN];
-    domain.toCharArray(options->domain, JSON_FIELD_DOMAIN_SIZE);
-  }
-  return true;
-}
-
-bool updateJsonFromOptions(WebStripOptions *options, JsonObject &json, ErrorCallbackFunctionType errorCallback) {
-  json[JSON_FIELD_PIXEL_COUNT] = options->pixelCount;
-  json[JSON_FIELD_PORT] = options->port;
-  json[JSON_FIELD_DOMAIN] = options->domain;
-  return true;
 }
 
 void onOtaUpdate() {

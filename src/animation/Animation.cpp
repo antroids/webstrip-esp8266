@@ -18,15 +18,7 @@ void Animation::init(BufferedNeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> *strip
 uint16_t Animation::getMainAnimationIndex() { return pixelCount; }
 
 RgbColor Animation::generateColor(uint16_t ledIndex) {
-  switch (mode->colorSelectionMode) {
-  case COLOR_SELECTION_MODE_RAND:
-    return mode->colors[random(mode->colorsCount)];
-  case COLOR_SELECTION_MODE_GENERATED:
-    return RgbColor(GENERATE_RANDOM_COLOR);
-  case COLOR_SELECTION_MODE_ASC:
-  default:
-    return mode->colors[ledIndex % mode->colorsCount];
-  }
+  return ColorSelectionMode::getFromIndex(mode->colorSelectionMode)->generateColor(ledIndex, pixelCount, mode);
 }
 
 void Animation::generateColors() {

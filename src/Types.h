@@ -3,4 +3,7 @@
 
 typedef bool (*ErrorCallbackFunctionType)(const char *errorMessage);
 
+class LedStripMode;
+class Animation;
+
 #endif
