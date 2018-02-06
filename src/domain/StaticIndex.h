@@ -1,9 +1,8 @@
 #ifndef DOMAIN_STATIC_INDEX_H
 #define DOMAIN_STATIC_INDEX_H
 
+#include "../Types.h"
 #include <Arduino.h>
-
-typedef uint16_t index_id_t;
 
 template <class T_ENTITY_TYPE, index_id_t V_INDEX_SIZE> class StaticIndex {
 public:

@@ -17,20 +17,19 @@
 #define JSON_FIELD_MODE_ANIMATION_DIRECTION "animationDirection"
 
 #define MODE_DESCRIPTION_SIZE 32
-#define MODE_DESCRIPTION_DEFAULT "Default mode"
 #define MODE_INDEX_MAX 15
 #define MODE_COLORS_SIZE 32
 
 class LedStripMode : public JsonEntity {
 public:
-  uint16_t index = 0;
-  char description[MODE_DESCRIPTION_SIZE] = MODE_DESCRIPTION_DEFAULT;
-  uint16_t colorsCount = 0;
-  uint16_t colorSelectionMode = 0;
-  uint16_t animationMode = 0;
-  uint16_t animationSpeed = 128;
-  uint16_t animationProgressMode = 0;
-  uint16_t animationIntensity = 1;
+  index_id_t index = 0;
+  char description[MODE_DESCRIPTION_SIZE] = "Default mode";
+  uint8_t colorsCount = 0;
+  index_id_t colorSelectionMode = 0;
+  index_id_t animationMode = 0;
+  uint8_t animationSpeed = 128;
+  index_id_t animationProgressMode = 0;
+  uint8_t animationIntensity = 1;
   bool animationDirection = true;
   RgbColor colors[MODE_COLORS_SIZE];
 

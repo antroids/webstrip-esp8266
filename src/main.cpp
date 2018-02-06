@@ -57,10 +57,6 @@ LedStripMode currentMode;
 bool otaMode = false;
 bool ledStripModeEditMode = true;
 
-// temp values can be used in animations
-RgbColor tempColor;
-uint16_t tempLedIndex = 0;
-
 // Initialized after reading saved options
 ESP8266WebServer *server;
 BufferedNeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> *strip;
@@ -68,7 +64,7 @@ Animation *currentAnimation = Animation::getFromIndex(0);
 
 bool validateRange(JsonObject &json, const char *fieldName, int min, int max, ErrorCallbackFunctionType errorCallback);
 void SetRandomSeed();
-void setLedStripAnimationMode(const uint16_t prevLedStripAnimationMode, const uint16_t newLedStripAnimationMode);
+void setLedStripAnimationMode(const index_id_t prevLedStripAnimationMode, const index_id_t newLedStripAnimationMode);
 void handleRoot();
 void sendJson(JsonObject &json, const int httpCode);
 void sendError(const char *message, int httpCode);
@@ -166,17 +162,17 @@ void initOTA() {
     if (ArduinoOTA.getCommand() == U_SPIFFS) {
       SPIFFS.end();
     }
-    strip->loadBufferColors([](RgbColor color, uint16_t ledIndex, float progress) { return YELLOW; }, 0);
+    strip->loadBufferColors([](RgbColor color, led_index_t ledIndex, float progress) { return YELLOW; }, 0);
     strip->Show();
   });
   ArduinoOTA.onEnd([]() {
-    strip->loadBufferColors([](RgbColor color, uint16_t ledIndex, float progress) { return BLUE; }, 0);
+    strip->loadBufferColors([](RgbColor color, led_index_t ledIndex, float progress) { return BLUE; }, 0);
     strip->Show();
   });
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
     float p = ((float)progress) / total;
     strip->loadBufferColors(
-        [](RgbColor color, uint16_t ledIndex, float p) {
+        [](RgbColor color, led_index_t ledIndex, float p) {
           if (ledIndex < currentOptions.pixelCount * p) {
             return GREEN;
           } else {
@@ -281,7 +277,7 @@ void onModePost() {
   }
   DynamicJsonBuffer jsonBuffer;
   JsonObject &request = jsonBuffer.parseObject(server->arg(ARG_JSON));
-  uint16_t previousAnimationMode = currentMode.animationMode;
+  index_id_t previousAnimationMode = currentMode.animationMode;
   if (currentMode.updateEntityFromJson(request, requestErrorHandler)) {
     setLedStripAnimationMode(previousAnimationMode, currentMode.animationMode);
     onModeGet();
@@ -340,7 +336,7 @@ void onListModesGet() {
   JsonArray &modes = response.createNestedArray("modes");
   char descriptionsBuffer[MODE_INDEX_MAX + 1][MODE_DESCRIPTION_SIZE];
 
-  for (uint16_t i = 0; i < MODE_INDEX_MAX; i++) {
+  for (uint8_t i = 0; i < MODE_INDEX_MAX; i++) {
     String filepath = MODE_JSON_FILE_PATH(i);
     if (SPIFFS.exists(filepath)) {
       DynamicJsonBuffer loadModeBuffer;
@@ -439,7 +435,7 @@ void sendJson(JsonObject &json, const int httpCode) {
   server->send(httpCode, MIME_JSON, jsonCharBuffer);
 }
 
-void setLedStripAnimationMode(const uint16_t prevLedStripAnimationMode, const uint16_t newLedStripAnimationMode) {
+void setLedStripAnimationMode(const index_id_t prevLedStripAnimationMode, const index_id_t newLedStripAnimationMode) {
   Animation::getFromIndex(prevLedStripAnimationMode)->stop();
   Animation::getFromIndex(newLedStripAnimationMode)->start();
   currentAnimation = Animation::getFromIndex(newLedStripAnimationMode);

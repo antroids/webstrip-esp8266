@@ -11,7 +11,7 @@
 
 class Options : public JsonEntity {
 public:
-  uint16_t pixelCount = 32;
+  led_index_t pixelCount = 32;
   char domain[JSON_FIELD_OPTIONS_DOMAIN_SIZE] = "WebStrip";
   uint32_t port = 80;
 

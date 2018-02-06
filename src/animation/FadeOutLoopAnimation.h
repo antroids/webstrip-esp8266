@@ -6,7 +6,7 @@ class FadeOutLoopAnimation : public Animation {
       restartMainAnimation();
     } else {
       float progress = calcProgress(param);
-      uint16_t ledIndex = pixelCount * progress;
+      led_index_t ledIndex = pixelCount * progress;
       ledIndex = mode->animationDirection ? ledIndex : pixelCount - ledIndex;
 
       if (!animations->IsAnimationActive(ledIndex)) {

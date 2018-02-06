@@ -4,7 +4,7 @@ NeoPixelAnimator *Animation::animations;
 LedColorAnimationState *Animation::ledColorAnimationState;
 BufferedNeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> *Animation::strip;
 LedStripMode *Animation::mode;
-uint16_t Animation::pixelCount;
+led_index_t Animation::pixelCount;
 RgbColor Animation::tempColor = BLACK;
 
 void Animation::init(BufferedNeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> *strip, LedStripMode *mode) {
@@ -15,14 +15,14 @@ void Animation::init(BufferedNeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> *strip
   Animation::animations = new NeoPixelAnimator(strip->PixelCount() + 1, NEO_CENTISECONDS);
 }
 
-uint16_t Animation::getMainAnimationIndex() { return pixelCount; }
+index_id_t Animation::getMainAnimationIndex() { return pixelCount; }
 
-RgbColor Animation::generateColor(uint16_t ledIndex) {
+RgbColor Animation::generateColor(led_index_t ledIndex) {
   return ColorSelectionMode::getFromIndex(mode->colorSelectionMode)->generateColor(ledIndex, pixelCount, mode);
 }
 
 void Animation::generateColors() {
-  for (uint16_t ledIndex = 0; ledIndex < pixelCount; ledIndex++) {
+  for (led_index_t ledIndex = 0; ledIndex < pixelCount; ledIndex++) {
     RgbColor color = generateColor(ledIndex);
     strip->setBufferColor(ledIndex, color);
   }
@@ -34,7 +34,7 @@ float Animation::calcProgress(const AnimationParam &param) {
 
 void Animation::updateLedColorChangeAnimation(const AnimationParam &param) {
   float progress = calcProgress(param);
-  uint16_t ledIndex = param.index;
+  led_index_t ledIndex = param.index;
   RgbColor updatedColor;
   if (param.state == AnimationState_Completed) {
     updatedColor = ledColorAnimationState[ledIndex].endColor;
@@ -45,7 +45,7 @@ void Animation::updateLedColorChangeAnimation(const AnimationParam &param) {
   strip->SetPixelColor(ledIndex, updatedColor);
 }
 
-void Animation::startUpdateLedColorChangeAnimation(uint16_t ledIndex, unsigned int duration) {
+void Animation::startUpdateLedColorChangeAnimation(led_index_t ledIndex, unsigned int duration) {
   Animation::animations->StartAnimation(ledIndex, duration, updateLedColorChangeAnimation);
 }
 

@@ -18,16 +18,16 @@ public:
   static LedColorAnimationState *ledColorAnimationState;
   static BufferedNeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> *strip;
   static LedStripMode *mode;
-  static uint16_t pixelCount;
+  static led_index_t pixelCount;
   static RgbColor tempColor;
 
   static void init(BufferedNeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> *strip, LedStripMode *mode);
-  static uint16_t getMainAnimationIndex();
-  static RgbColor generateColor(uint16_t ledIndex);
+  static index_id_t getMainAnimationIndex();
+  static RgbColor generateColor(led_index_t ledIndex);
   static void generateColors();
   static float calcProgress(const AnimationParam &param);
   static void updateLedColorChangeAnimation(const AnimationParam &param);
-  static void startUpdateLedColorChangeAnimation(uint16_t ledIndex, unsigned int duration);
+  static void startUpdateLedColorChangeAnimation(led_index_t ledIndex, unsigned int duration);
   static void showGeneratedColors();
   static void showBlackColor();
 
