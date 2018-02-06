@@ -33,6 +33,12 @@ bool LedStripMode::updateEntityFromJson(JsonObject &json, ErrorCallbackFunctionT
   if (json.containsKey(JSON_FIELD_MODE_ANIMATION_DIRECTION)) {
     animationDirection = json[JSON_FIELD_MODE_ANIMATION_DIRECTION];
   }
+  if (json.containsKey(JSON_FIELD_MODE_NEXT_MODE)) {
+    nextMode = json[JSON_FIELD_MODE_NEXT_MODE];
+  }
+  if (json.containsKey(JSON_FIELD_MODE_NEXT_MODE_DELAY)) {
+    nextModeDelay = json[JSON_FIELD_MODE_NEXT_MODE_DELAY];
+  }
   if (json.containsKey(JSON_FIELD_MODE_COLORS)) {
     if (!json.is<JsonArray>(JSON_FIELD_MODE_COLORS) && !errorCallback("Json prop colors must be array"))
       return false;
@@ -67,6 +73,8 @@ bool LedStripMode::updateJsonFromEntity(JsonObject &json, ErrorCallbackFunctionT
   json[JSON_FIELD_MODE_ANIMATION_SPEED] = animationSpeed;
   json[JSON_FIELD_MODE_ANIMATION_INTENSITY] = animationIntensity;
   json[JSON_FIELD_MODE_ANIMATION_DIRECTION] = animationDirection;
+  json[JSON_FIELD_MODE_NEXT_MODE] = nextMode;
+  json[JSON_FIELD_MODE_NEXT_MODE_DELAY] = nextModeDelay;
   json[JSON_FIELD_MODE_ANIMATION_PROGRESS_MODE] = animationProgressMode;
   return true;
 };

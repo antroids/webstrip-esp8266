@@ -59,7 +59,8 @@ Options currentOptions;
 LedStripMode currentMode;
 
 bool otaMode = false;
-bool ledStripModeEditMode = true;
+bool editMode = false;
+unsigned long modeChangeTime = 0;
 
 // Initialized after reading saved options
 ESP8266WebServer *server;
@@ -78,6 +79,7 @@ void onOtaUpdate();
 JsonObject &loadJsonFromFS(DynamicJsonBuffer *jsonBuffer, String path, ErrorCallbackFunctionType errorCallback);
 bool saveJsonToFS(JsonObject &json, String path, ErrorCallbackFunctionType errorCallback);
 bool loadOptionsFromFS();
+bool loadModeFromFS(index_id_t index, ErrorCallbackFunctionType errorCallback);
 void onOptionsPost();
 void onOptionsGet();
 void onSaveModeGet();
@@ -146,6 +148,10 @@ void loop() {
   if (otaMode) {
     ArduinoOTA.handle();
   } else {
+    if (!editMode && currentMode.nextModeDelay > 0 && (millis() - modeChangeTime) > currentMode.nextModeDelay && currentMode.nextMode != currentMode.index) {
+      loadModeFromFS(currentMode.nextMode, logErrorHandler);
+      modeChangeTime = millis();
+    }
     server->handleClient();
     currentAnimation->processAnimation();
   }
@@ -227,6 +233,7 @@ void initDefaultMode() {
       setLedStripAnimationMode(0, currentMode.animationMode);
     }
   }
+  modeChangeTime = millis();
 }
 
 void initDefaultColors() {
@@ -295,6 +302,7 @@ void onModePost() {
   index_id_t previousAnimationMode = currentMode.animationMode;
   if (currentMode.updateEntityFromJson(request, requestErrorHandler)) {
     setLedStripAnimationMode(previousAnimationMode, currentMode.animationMode);
+    editMode = true;
     onModeGet();
   }
 }
@@ -303,6 +311,7 @@ void onModeGet() {
   DynamicJsonBuffer jsonBuffer;
   JsonObject &response = jsonBuffer.createObject();
   if (currentMode.updateJsonFromEntity(response, requestErrorHandler)) {
+    editMode = true;
     sendJson(response, HTTP_CODE_OK);
   }
 }
@@ -330,18 +339,11 @@ void onLoadModeGet() {
     return;
   }
   currentMode.index = server->arg(ARG_INDEX).toInt();
-  String filepath = MODE_JSON_FILE_PATH(currentMode.index);
-  if (!SPIFFS.exists(filepath)) {
-    sendError("Saved mode not found", HTTP_CODE_NOT_FOUND);
-    return;
-  }
+
   DynamicJsonBuffer jsonBuffer;
 
-  JsonObject &json = loadJsonFromFS(&jsonBuffer, filepath, requestErrorHandler);
-  uint16_t prevAnimationMode = currentMode.animationMode;
-  if (json != JsonObject::invalid() && currentMode.updateEntityFromJson(json, requestErrorHandler)) {
-    setLedStripAnimationMode(prevAnimationMode, currentMode.animationMode);
-    sendJson(json, HTTP_CODE_OK);
+  if (loadModeFromFS(currentMode.index, requestErrorHandler)) {
+    onSaveModeGet();
   }
 }
 
@@ -427,6 +429,22 @@ void onSysInfoGet() {
   if (sysInfo.updateJsonFromEntity(response, requestErrorHandler)) {
     sendJson(response, HTTP_CODE_OK);
   }
+}
+
+bool loadModeFromFS(index_id_t index, ErrorCallbackFunctionType errorCallback) {
+  String filepath = MODE_JSON_FILE_PATH(index);
+  if (!SPIFFS.exists(filepath)) {
+    return errorCallback("Saved mode not found");
+  }
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject &json = loadJsonFromFS(&jsonBuffer, filepath, errorCallback);
+  index_id_t prevAnimationMode = currentMode.animationMode;
+  if (json != JsonObject::invalid() && currentMode.updateEntityFromJson(json, requestErrorHandler)) {
+    currentMode.index = index;
+    setLedStripAnimationMode(prevAnimationMode, currentMode.animationMode);
+    return true;
+  }
+  return false;
 }
 
 void handleNotFound() {

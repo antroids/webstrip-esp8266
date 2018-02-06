@@ -15,6 +15,8 @@
 #define JSON_FIELD_MODE_ANIMATION_PROGRESS_MODE "animationProgressMode"
 #define JSON_FIELD_MODE_ANIMATION_INTENSITY "animationIntensity"
 #define JSON_FIELD_MODE_ANIMATION_DIRECTION "animationDirection"
+#define JSON_FIELD_MODE_NEXT_MODE "nextMode"
+#define JSON_FIELD_MODE_NEXT_MODE_DELAY "nextModeDelay"
 
 #define MODE_DESCRIPTION_SIZE 32
 #define MODE_INDEX_MAX 15
@@ -31,6 +33,8 @@ public:
   index_id_t animationProgressMode = 0;
   uint8_t animationIntensity = 1;
   bool animationDirection = true;
+  index_id_t nextMode = 0;
+  index_id_t nextModeDelay = 0;
   RgbColor colors[MODE_COLORS_SIZE];
 
   bool updateEntityFromJson(JsonObject &json, ErrorCallbackFunctionType errorCallback);
