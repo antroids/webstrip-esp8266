@@ -2,6 +2,7 @@
 #define ANIMATION_H
 
 #include "../BufferedNeoPixelBus.h"
+#include "../Log.h"
 #include "../Types.h"
 #include "../domain/AnimationProgressMode.h"
 #include "../domain/StaticIndex.h"
@@ -14,6 +15,8 @@ struct LedColorAnimationState {
 
 class Animation : public StaticIndex<Animation, 32> {
 public:
+  static Log logger;
+
   static NeoPixelAnimator *animations;
   static LedColorAnimationState *ledColorAnimationState;
   static BufferedNeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> *strip;

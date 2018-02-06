@@ -38,12 +38,14 @@ bool LedStripMode::updateEntityFromJson(JsonObject &json, ErrorCallbackFunctionT
       return false;
     HtmlColor htmlColor;
     JsonArray &colorsArray = (JsonArray &)json[JSON_FIELD_MODE_COLORS];
-    if (colorsArray.size() > MODE_COLORS_SIZE && !errorCallback("Too many colors!"))
-      for (int i = 0; i < colorsArray.size(); i++) {
-        String colorCode = colorsArray[i];
-        htmlColor.Parse<HtmlColorNames>(colorCode);
-        colors[i] = RgbColor(htmlColor);
-      }
+    if (colorsArray.size() > MODE_COLORS_SIZE && !errorCallback("Too many colors!")) {
+      return false;
+    }
+    for (uint8_t i = 0; i < colorsArray.size(); i++) {
+      String colorCode = colorsArray[i];
+      htmlColor.Parse<HtmlColorNames>(colorCode);
+      colors[i] = RgbColor(htmlColor);
+    }
     colorsCount = colorsArray.size();
   }
 
