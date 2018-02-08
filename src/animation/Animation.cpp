@@ -55,20 +55,6 @@ void Animation::startUpdateLedColorChangeAnimation(led_index_t ledIndex, unsigne
   Animation::animations->StartAnimation(ledIndex, duration, updateLedColorChangeAnimation);
 }
 
-void Animation::showGeneratedColors() {
-  logger.info("Showing generated colors");
-  generateColors();
-  strip->loadBufferColors();
-  strip->Show();
-}
-
-void Animation::showBlackColor() {
-  logger.info("Showing black color");
-  generateColors();
-  strip->ClearTo(BLACK);
-  strip->Show();
-}
-
 void Animation::processAnimation() {
   if (Animation::animations->IsAnimating()) {
     Animation::animations->UpdateAnimations();
@@ -86,14 +72,30 @@ void Animation::restartMainAnimation() {
   Animation::animations->RestartAnimation(getMainAnimationIndex());
 }
 
+void Animation::updateTransitionAnimation(const AnimationParam &param) {
+  if (param.state == AnimationState_Completed) {
+    startMainAnimation();
+  }
+}
+
+void Animation::startTransitionAnimation() {
+  for (led_index_t ledIndex = 0; ledIndex < pixelCount; ledIndex++) {
+    ledColorAnimationState[ledIndex].startColor = strip->GetPixelColor(ledIndex);
+    ledColorAnimationState[ledIndex].endColor = strip->getBufferColor(ledIndex);
+    startUpdateLedColorChangeAnimation(ledIndex, TRANSITION_ANIMATION_DURATION);
+  }
+  Animation::animations->StartAnimation(getMainAnimationIndex(), TRANSITION_ANIMATION_DURATION,
+                                        [=](const AnimationParam &param) { return this->updateTransitionAnimation(param); });
+}
+
 unsigned int Animation::calcAnimationTime() {
   unsigned int animationTime = getDuration() * (256 - Animation::mode->animationSpeed) / 128;
   return animationTime > 0 ? animationTime : 1;
 }
 
 void Animation::start() {
-  showBlackColor();
-  startMainAnimation();
+  strip->clearBufferColor(BLACK);
+  startTransitionAnimation();
 }
 
 void Animation::update(const AnimationParam &param) {}

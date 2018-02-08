@@ -2,8 +2,8 @@
 
 class RandPixelsAnimation : public Animation {
   void start() {
-    showGeneratedColors();
-    startMainAnimation();
+    generateColors();
+    startTransitionAnimation();
   }
 
   void update(const AnimationParam &param) {

@@ -1,6 +1,11 @@
 #include "animation/Animation.h"
 
 class FadeAnimation : public Animation {
+  void start() {
+    generateColors();
+    startTransitionAnimation();
+  }
+
   void update(const AnimationParam &param) {
     float progress = calcProgress(param);
     strip->loadBufferColors(

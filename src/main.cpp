@@ -40,6 +40,7 @@
 
 #define ARG_JSON "data"
 #define ARG_INDEX "index"
+#define ARG_AUTO_MODE_CHANGING "autoModeChanging"
 
 #define DOMAIN_POSTFIX ".local"
 
@@ -59,7 +60,7 @@ Options currentOptions;
 LedStripMode currentMode;
 
 bool otaMode = false;
-bool editMode = false;
+bool autoModeChanging = true;
 unsigned long modeChangeTime = 0;
 
 // Initialized after reading saved options
@@ -70,92 +71,16 @@ Animation *currentAnimation = Animation::getFromIndex(0);
 bool validateRange(JsonObject &json, const char *fieldName, int min, int max, ErrorCallbackFunctionType errorCallback);
 void SetRandomSeed();
 void setLedStripAnimationMode(const index_id_t prevLedStripAnimationMode, const index_id_t newLedStripAnimationMode);
-void handleRoot();
 void sendJson(JsonObject &json, const int httpCode);
 void sendError(const char *message, int httpCode);
 void setupResponseHeaders();
-void handleNotFound();
-void onOtaUpdate();
 JsonObject &loadJsonFromFS(DynamicJsonBuffer *jsonBuffer, String path, ErrorCallbackFunctionType errorCallback);
 bool saveJsonToFS(JsonObject &json, String path, ErrorCallbackFunctionType errorCallback);
 bool loadOptionsFromFS();
 bool loadModeFromFS(index_id_t index, ErrorCallbackFunctionType errorCallback);
-void onOptionsPost();
-void onOptionsGet();
-void onSaveModeGet();
-void onLoadModeGet();
-void onListModesGet();
-void onModeGet();
-void onModePost();
-void onSysInfoGet();
-void onIndexMinJsGz();
-void onRoot();
 bool logErrorHandler(const char *errorMessage);
 bool requestErrorHandler(const char *errorMessage);
-void setupUrlMappings();
-void initDefaultColors();
-void initDefaultMode();
-void initMDNS();
-void initWebServer();
-void initOTA();
-void initAnimations();
-void initLedStrip();
 void restart();
-void loop();
-void setup();
-
-void setup() {
-  Serial.begin(115200);
-  mainLogger.info("Serial started");
-  SetRandomSeed();
-  SPIFFS.begin();
-  mainLogger.info("SPIFFS started");
-  // Print root dir content
-
-  // Dir dir = SPIFFS.openDir("/web/");
-  // Serial.println("");
-  // while (dir.next()) {
-  //   Serial.print(dir.fileName());
-  //   File f = dir.openFile("r");
-  //   Serial.println(f.size());
-  // }
-  if (!loadOptionsFromFS()) {
-    mainLogger.err("Cannot load options from file, using predefined values");
-  }
-
-  // network
-  WiFiManager wifiManager;
-  wifiManager.autoConnect(currentOptions.domain);
-  mainLogger.info("WiFiManager setup complete");
-  initOTA();
-  mainLogger.info("OTA setup completed");
-  initMDNS();
-  mainLogger.info("MDNS started");
-  initWebServer();
-  mainLogger.info("Web server started");
-
-  // strip
-  initLedStrip();
-  mainLogger.info("Led strip initialized");
-  initAnimations();
-  mainLogger.info("Animations initialized");
-  initDefaultMode();
-  mainLogger.info("Default mode loaded");
-}
-
-void loop() {
-  MDNS.update();
-  if (otaMode) {
-    ArduinoOTA.handle();
-  } else {
-    if (!editMode && currentMode.nextModeDelay > 0 && (millis() - modeChangeTime) > currentMode.nextModeDelay && currentMode.nextMode != currentMode.index) {
-      loadModeFromFS(currentMode.nextMode, logErrorHandler);
-      modeChangeTime = millis();
-    }
-    server->handleClient();
-    currentAnimation->processAnimation();
-  }
-}
 
 void restart() {
   mainLogger.info("Restarting...");
@@ -202,12 +127,6 @@ void initOTA() {
   });
 }
 
-void initWebServer() {
-  server = new ESP8266WebServer(currentOptions.port);
-  setupUrlMappings();
-  server->begin();
-}
-
 void initMDNS() {
   uint16_t attempts = 3;
   while (attempts-- > 0) {
@@ -218,6 +137,18 @@ void initMDNS() {
       return;
     }
   }
+}
+
+void initDefaultColors() {
+  const char *defaultColors[] = DEFAULT_COLORS;
+  HtmlColor htmlColor;
+
+  for (int i = 0; i < DEFAULT_COLORS_COUNT; i++) {
+    htmlColor.Parse<HtmlColorNames>(defaultColors[i]);
+    currentMode.colors[i] = RgbColor(htmlColor);
+  }
+  currentMode.colorsCount = DEFAULT_COLORS_COUNT;
+  mainLogger.infof("Default '%d' colors loaded", currentMode.colorsCount);
 }
 
 void initDefaultMode() {
@@ -236,33 +167,6 @@ void initDefaultMode() {
   modeChangeTime = millis();
 }
 
-void initDefaultColors() {
-  const char *defaultColors[] = DEFAULT_COLORS;
-  HtmlColor htmlColor;
-
-  for (int i = 0; i < DEFAULT_COLORS_COUNT; i++) {
-    htmlColor.Parse<HtmlColorNames>(defaultColors[i]);
-    currentMode.colors[i] = RgbColor(htmlColor);
-  }
-  currentMode.colorsCount = DEFAULT_COLORS_COUNT;
-  mainLogger.infof("Default '%d' colors loaded", currentMode.colorsCount);
-}
-
-void setupUrlMappings() {
-  server->on("/", onRoot);
-  server->on("/index.min.js.gz", onIndexMinJsGz);
-  server->on("/api/mode", HTTP_POST, onModePost);
-  server->on("/api/mode", HTTP_GET, onModeGet);
-  server->on("/api/saveMode", HTTP_GET, onSaveModeGet);
-  server->on("/api/loadMode", HTTP_GET, onLoadModeGet);
-  server->on("/api/listModes", HTTP_GET, onListModesGet);
-  server->on("/api/options", HTTP_POST, onOptionsPost);
-  server->on("/api/options", HTTP_GET, onOptionsGet);
-  server->on("/api/otaUpdate", onOtaUpdate);
-  server->on("/api/sysInfo", onSysInfoGet);
-  server->onNotFound(handleNotFound);
-}
-
 bool requestErrorHandler(const char *errorMessage) {
   sendError(errorMessage, HTTP_CODE_WRONG_REQUEST);
   mainLogger.err(errorMessage);
@@ -272,6 +176,95 @@ bool requestErrorHandler(const char *errorMessage) {
 bool logErrorHandler(const char *errorMessage) {
   mainLogger.err(errorMessage);
   return false;
+}
+
+bool loadOptionsFromFS() {
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject &json = loadJsonFromFS(&jsonBuffer, OPTIONS_JSON_FILE_PATH, logErrorHandler);
+  return json != JsonObject::invalid() && currentOptions.updateEntityFromJson(json, logErrorHandler);
+}
+
+bool saveJsonToFS(JsonObject &json, String path, ErrorCallbackFunctionType errorCallback) {
+  File jsonFile = SPIFFS.open(path, "w");
+  json.printTo(jsonFile);
+  jsonFile.close();
+  return true;
+}
+
+JsonObject &loadJsonFromFS(DynamicJsonBuffer *jsonBuffer, String path, ErrorCallbackFunctionType errorCallback) {
+  File jsonFile = SPIFFS.open(path, "r");
+  JsonObject &json = jsonBuffer->parseObject(jsonFile);
+  jsonFile.close();
+  return json;
+}
+
+bool loadModeFromFS(index_id_t index, ErrorCallbackFunctionType errorCallback) {
+  String filepath = MODE_JSON_FILE_PATH(index);
+  if (!SPIFFS.exists(filepath)) {
+    return errorCallback("Saved mode not found");
+  }
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject &json = loadJsonFromFS(&jsonBuffer, filepath, errorCallback);
+  index_id_t prevAnimationMode = currentMode.animationMode;
+  if (json != JsonObject::invalid() && currentMode.updateEntityFromJson(json, requestErrorHandler)) {
+    currentMode.index = index;
+    setLedStripAnimationMode(prevAnimationMode, currentMode.animationMode);
+    return true;
+  }
+  return false;
+}
+
+void handleNotFound() {
+  String message = "File Not Found\n\n";
+  message += "URI: ";
+  message += server->uri();
+  message += "\nMethod: ";
+  message += (server->method() == HTTP_GET) ? "GET" : "POST";
+  message += "\nArguments: ";
+  message += server->args();
+  message += "\n";
+  for (uint8_t i = 0; i < server->args(); i++) {
+    message += " " + server->argName(i) + ": " + server->arg(i) + "\n";
+  }
+  server->send(404, "text/plain", message);
+}
+
+void setupResponseHeaders() { server->sendHeader("Access-Control-Allow-Origin", "*"); }
+
+void sendError(const char *message, int httpCode) {
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject &response = jsonBuffer.createObject();
+  response["errorMessage"] = message;
+  mainLogger.err(message);
+  sendJson(response, httpCode);
+}
+
+void sendJson(JsonObject &json, const int httpCode) {
+  char jsonCharBuffer[512];
+  json.printTo(jsonCharBuffer);
+  setupResponseHeaders();
+  mainLogger.info("Sending JSON response");
+  server->send(httpCode, MIME_JSON, jsonCharBuffer);
+}
+
+void setLedStripAnimationMode(const index_id_t prevLedStripAnimationMode, const index_id_t newLedStripAnimationMode) {
+  mainLogger.infof("Changing animation mode from '%d' to '%d'", prevLedStripAnimationMode, newLedStripAnimationMode);
+  Animation::getFromIndex(prevLedStripAnimationMode)->stop();
+  mainLogger.info("Stopping previous animation mode");
+  Animation::getFromIndex(newLedStripAnimationMode)->start();
+  mainLogger.info("Starting next animation mode");
+  currentAnimation = Animation::getFromIndex(newLedStripAnimationMode);
+}
+
+void SetRandomSeed() {
+  uint32_t seed;
+  seed = analogRead(0);
+  delay(1);
+  for (int shifts = 3; shifts < 31; shifts += 3) {
+    seed ^= analogRead(0) << shifts;
+    delay(1);
+  }
+  randomSeed(seed);
 }
 
 void onRoot() {
@@ -292,6 +285,15 @@ void onIndexMinJsGz() {
   file.close();
 }
 
+void onModeGet() {
+  DynamicJsonBuffer jsonBuffer;
+  JsonObject &response = jsonBuffer.createObject();
+  if (currentMode.updateJsonFromEntity(response, requestErrorHandler)) {
+    autoModeChanging = false;
+    sendJson(response, HTTP_CODE_OK);
+  }
+}
+
 void onModePost() {
   if (!server->hasArg(ARG_JSON)) {
     sendError("Json not found", HTTP_CODE_WRONG_REQUEST);
@@ -302,17 +304,8 @@ void onModePost() {
   index_id_t previousAnimationMode = currentMode.animationMode;
   if (currentMode.updateEntityFromJson(request, requestErrorHandler)) {
     setLedStripAnimationMode(previousAnimationMode, currentMode.animationMode);
-    editMode = true;
+    autoModeChanging = false;
     onModeGet();
-  }
-}
-
-void onModeGet() {
-  DynamicJsonBuffer jsonBuffer;
-  JsonObject &response = jsonBuffer.createObject();
-  if (currentMode.updateJsonFromEntity(response, requestErrorHandler)) {
-    editMode = true;
-    sendJson(response, HTTP_CODE_OK);
   }
 }
 
@@ -394,28 +387,8 @@ void onOptionsPost() {
   }
 }
 
-bool loadOptionsFromFS() {
-  DynamicJsonBuffer jsonBuffer;
-  JsonObject &json = loadJsonFromFS(&jsonBuffer, OPTIONS_JSON_FILE_PATH, logErrorHandler);
-  return json != JsonObject::invalid() && currentOptions.updateEntityFromJson(json, logErrorHandler);
-}
-
-bool saveJsonToFS(JsonObject &json, String path, ErrorCallbackFunctionType errorCallback) {
-  File jsonFile = SPIFFS.open(path, "w");
-  json.printTo(jsonFile);
-  jsonFile.close();
-  return true;
-}
-
-JsonObject &loadJsonFromFS(DynamicJsonBuffer *jsonBuffer, String path, ErrorCallbackFunctionType errorCallback) {
-  File jsonFile = SPIFFS.open(path, "r");
-  JsonObject &json = jsonBuffer->parseObject(jsonFile);
-  jsonFile.close();
-  return json;
-}
-
 void onOtaUpdate() {
-  ArduinoOTA.setHostname("WebStripOTA");
+  ArduinoOTA.setHostname(currentOptions.domain);
   ArduinoOTA.begin();
   otaMode = true;
   server->send(HTTP_CODE_OK, "text/plain", "Waiting for OTA update");
@@ -431,71 +404,77 @@ void onSysInfoGet() {
   }
 }
 
-bool loadModeFromFS(index_id_t index, ErrorCallbackFunctionType errorCallback) {
-  String filepath = MODE_JSON_FILE_PATH(index);
-  if (!SPIFFS.exists(filepath)) {
-    return errorCallback("Saved mode not found");
+void setupUrlMappings() {
+  server->on("/", onRoot);
+  server->on("/index.min.js.gz", onIndexMinJsGz);
+  server->on("/api/mode", HTTP_POST, onModePost);
+  server->on("/api/mode", HTTP_GET, onModeGet);
+  server->on("/api/saveMode", HTTP_GET, onSaveModeGet);
+  server->on("/api/loadMode", HTTP_GET, onLoadModeGet);
+  server->on("/api/listModes", HTTP_GET, onListModesGet);
+  server->on("/api/options", HTTP_POST, onOptionsPost);
+  server->on("/api/options", HTTP_GET, onOptionsGet);
+  server->on("/api/otaUpdate", onOtaUpdate);
+  server->on("/api/sysInfo", onSysInfoGet);
+  server->onNotFound(handleNotFound);
+}
+
+void initWebServer() {
+  server = new ESP8266WebServer(currentOptions.port);
+  setupUrlMappings();
+  server->begin();
+}
+
+void setup() {
+  Serial.begin(115200);
+  mainLogger.info("Serial started");
+  SetRandomSeed();
+  SPIFFS.begin();
+  mainLogger.info("SPIFFS started");
+  // Print root dir content
+
+  // Dir dir = SPIFFS.openDir("/web/");
+  // Serial.println("");
+  // while (dir.next()) {
+  //   Serial.print(dir.fileName());
+  //   File f = dir.openFile("r");
+  //   Serial.println(f.size());
+  // }
+  if (!loadOptionsFromFS()) {
+    mainLogger.err("Cannot load options from file, using predefined values");
   }
-  DynamicJsonBuffer jsonBuffer;
-  JsonObject &json = loadJsonFromFS(&jsonBuffer, filepath, errorCallback);
-  index_id_t prevAnimationMode = currentMode.animationMode;
-  if (json != JsonObject::invalid() && currentMode.updateEntityFromJson(json, requestErrorHandler)) {
-    currentMode.index = index;
-    setLedStripAnimationMode(prevAnimationMode, currentMode.animationMode);
-    return true;
+
+  // network
+  WiFiManager wifiManager;
+  wifiManager.autoConnect(currentOptions.domain);
+  mainLogger.info("WiFiManager setup complete");
+  initOTA();
+  mainLogger.info("OTA setup completed");
+  initMDNS();
+  mainLogger.info("MDNS started");
+  initWebServer();
+  mainLogger.info("Web server started");
+
+  // strip
+  initLedStrip();
+  mainLogger.info("Led strip initialized");
+  initAnimations();
+  mainLogger.info("Animations initialized");
+  initDefaultMode();
+  mainLogger.info("Default mode loaded");
+}
+
+void loop() {
+  MDNS.update();
+  if (otaMode) {
+    ArduinoOTA.handle();
+  } else {
+    if (autoModeChanging && currentMode.nextModeDelay > 0 && (millis() - modeChangeTime) > currentMode.nextModeDelay &&
+        currentMode.nextMode != currentMode.index) {
+      loadModeFromFS(currentMode.nextMode, logErrorHandler);
+      modeChangeTime = millis();
+    }
+    server->handleClient();
+    currentAnimation->processAnimation();
   }
-  return false;
-}
-
-void handleNotFound() {
-  String message = "File Not Found\n\n";
-  message += "URI: ";
-  message += server->uri();
-  message += "\nMethod: ";
-  message += (server->method() == HTTP_GET) ? "GET" : "POST";
-  message += "\nArguments: ";
-  message += server->args();
-  message += "\n";
-  for (uint8_t i = 0; i < server->args(); i++) {
-    message += " " + server->argName(i) + ": " + server->arg(i) + "\n";
-  }
-  server->send(404, "text/plain", message);
-}
-
-void setupResponseHeaders() { server->sendHeader("Access-Control-Allow-Origin", "*"); }
-
-void sendError(const char *message, int httpCode) {
-  DynamicJsonBuffer jsonBuffer;
-  JsonObject &response = jsonBuffer.createObject();
-  response["errorMessage"] = message;
-  mainLogger.err(message);
-  sendJson(response, httpCode);
-}
-
-void sendJson(JsonObject &json, const int httpCode) {
-  char jsonCharBuffer[512];
-  json.printTo(jsonCharBuffer);
-  setupResponseHeaders();
-  mainLogger.info("Sending JSON response");
-  server->send(httpCode, MIME_JSON, jsonCharBuffer);
-}
-
-void setLedStripAnimationMode(const index_id_t prevLedStripAnimationMode, const index_id_t newLedStripAnimationMode) {
-  mainLogger.infof("Changing animation mode from '%d' to '%d'", prevLedStripAnimationMode, newLedStripAnimationMode);
-  Animation::getFromIndex(prevLedStripAnimationMode)->stop();
-  mainLogger.info("Stopping previous animation mode");
-  Animation::getFromIndex(newLedStripAnimationMode)->start();
-  mainLogger.info("Starting next animation mode");
-  currentAnimation = Animation::getFromIndex(newLedStripAnimationMode);
-}
-
-void SetRandomSeed() {
-  uint32_t seed;
-  seed = analogRead(0);
-  delay(1);
-  for (int shifts = 3; shifts < 31; shifts += 3) {
-    seed ^= analogRead(0) << shifts;
-    delay(1);
-  }
-  randomSeed(seed);
 }

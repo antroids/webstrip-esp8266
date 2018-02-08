@@ -8,6 +8,8 @@
 #include "../domain/StaticIndex.h"
 #include <NeoPixelAnimator.h>
 
+#define TRANSITION_ANIMATION_DURATION 50
+
 struct LedColorAnimationState {
   RgbColor startColor;
   RgbColor endColor;
@@ -31,13 +33,13 @@ public:
   static float calcProgress(const AnimationParam &param);
   static void updateLedColorChangeAnimation(const AnimationParam &param);
   static void startUpdateLedColorChangeAnimation(led_index_t ledIndex, unsigned int duration);
-  static void showGeneratedColors();
-  static void showBlackColor();
 
   unsigned int calcAnimationTime();
   void processAnimation();
   void startMainAnimation();
   void restartMainAnimation();
+  void updateTransitionAnimation(const AnimationParam &param);
+  void startTransitionAnimation();
   virtual void start();
   virtual void update(const AnimationParam &param);
   virtual void stop();
