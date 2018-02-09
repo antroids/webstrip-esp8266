@@ -19,6 +19,7 @@
 #include "animation/NoneAnimation.h"
 #include "animation/RandPixelsAnimation.h"
 #include "animation/ShiftAnimation.h"
+#include "animation/SolidExplosionsAnimation.h"
 #include "animation/SolidFadeOutLoopAnimation.h"
 
 #include "domain/Esp8266SysInfo.h"
@@ -46,9 +47,9 @@
 
 Log mainLogger("Main");
 
-Animation *animations[] = {new NoneAnimation(),       new ShiftAnimation(),       new FadeAnimation(),
-                           new RandPixelsAnimation(), new FlashPixelsAnimation(), new SolidFadeOutLoopAnimation(),
-                           new FadeOutLoopAnimation()};
+Animation *animations[] = {new NoneAnimation(),        new ShiftAnimation(),          new FadeAnimation(),
+                           new RandPixelsAnimation(),  new FlashPixelsAnimation(),    new SolidFadeOutLoopAnimation(),
+                           new FadeOutLoopAnimation(), new SolidExplosionsAnimation()};
 
 AnimationProgressMode *animationProgressModes[] = {new LinearAnimationProgressMode(), new SinInAnimationProgressMode(), new SinOutAnimationProgressMode(),
                                                    new SinInOutAnimationProgressMode()};

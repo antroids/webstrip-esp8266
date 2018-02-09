@@ -25,6 +25,7 @@ public:
   static LedStripMode *mode;
   static led_index_t pixelCount;
   static RgbColor tempColor;
+  static led_index_t tempLedIndex;
 
   static void init(BufferedNeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> *strip, LedStripMode *mode);
   static index_id_t getMainAnimationIndex();

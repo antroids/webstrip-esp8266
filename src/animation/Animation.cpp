@@ -6,6 +6,7 @@ BufferedNeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> *Animation::strip;
 LedStripMode *Animation::mode;
 led_index_t Animation::pixelCount;
 RgbColor Animation::tempColor = BLACK;
+led_index_t Animation::tempLedIndex;
 Log Animation::logger("Animation");
 
 void Animation::init(BufferedNeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> *strip, LedStripMode *mode) {
