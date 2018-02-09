@@ -10,9 +10,24 @@
 
 #define TRANSITION_ANIMATION_DURATION 50
 
+#define ANIMATION_TIME_UNIT NEO_CENTISECONDS
+#define SECONDS_TO_ANIMATION_TIME(VALUE) (VALUE * 1000 / ANIMATION_TIME_UNIT)
+#define MILLISECONDS_TO_ANIMATION_TIME(VALUE) (VALUE * ANIMATION_TIME_UNIT)
+
 struct LedColorAnimationState {
   RgbColor startColor;
   RgbColor endColor;
+};
+
+typedef double (*ScaleModificationFunction)(const double value);
+
+struct ScaleDescriptor {
+  uint16_t min;
+  uint16_t max;
+  ScaleModificationFunction modifier = [=](const double value) { return value; };
+
+  ScaleDescriptor(uint16_t _min, uint16_t _max) : min(_min), max(_max){};
+  ScaleDescriptor(uint16_t _min, uint16_t _max, ScaleModificationFunction _modifier) : min(_min), max(_max), modifier(_modifier){};
 };
 
 class Animation : public StaticIndex<Animation, 32> {
@@ -26,6 +41,7 @@ public:
   static led_index_t pixelCount;
   static RgbColor tempColor;
   static led_index_t tempLedIndex;
+  static ScaleDescriptor inputScale;
 
   static void init(BufferedNeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> *strip, LedStripMode *mode);
   static index_id_t getMainAnimationIndex();
@@ -34,8 +50,10 @@ public:
   static float calcProgress(const AnimationParam &param);
   static void updateLedColorChangeAnimation(const AnimationParam &param);
   static void startUpdateLedColorChangeAnimation(led_index_t ledIndex, unsigned int duration);
+  static uint16_t convertToScale(ScaleDescriptor inputScale, ScaleDescriptor outputScale, uint16_t value);
 
-  unsigned int calcAnimationTime();
+  uint16_t calcAnimationTime();
+  uint16_t calcAnimationIntensity();
   void processAnimation();
   void startMainAnimation();
   void restartMainAnimation();
@@ -44,7 +62,8 @@ public:
   virtual void start();
   virtual void update(const AnimationParam &param);
   virtual void stop();
-  virtual uint16_t getDuration();
+  virtual ScaleDescriptor getAnimationSpeedScale();
+  virtual ScaleDescriptor getAnimationIntensityScale();
 
   Animation() : StaticIndex(this){};
 };

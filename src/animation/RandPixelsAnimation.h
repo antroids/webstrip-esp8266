@@ -8,7 +8,7 @@ class RandPixelsAnimation : public Animation {
 
   void update(const AnimationParam &param) {
     if (param.state == AnimationState_Completed) {
-      for (led_index_t i = 0; i < mode->animationIntensity; i++) {
+      for (led_index_t i = 0; i < calcAnimationIntensity(); i++) {
         led_index_t ledIndex = random(pixelCount);
 
         if (!animations->IsAnimationActive(ledIndex)) {
@@ -20,6 +20,4 @@ class RandPixelsAnimation : public Animation {
       restartMainAnimation();
     }
   }
-
-  uint16_t getDuration() { return 10; }
 };

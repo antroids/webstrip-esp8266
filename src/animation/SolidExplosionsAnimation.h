@@ -11,10 +11,10 @@ class SolidExplosionsAnimation : public Animation {
         startFlashPixelAnimation(tempLedIndex, tempColor);
       } else {
         float progress = calcProgress(param);
-        led_index_t dLedIndex = mode->animationIntensity * progress;
+        led_index_t dLedIndex = calcAnimationIntensity() * progress;
         int leftLedIndex = ((int)tempLedIndex) - dLedIndex;
         int rightLedIndex = ((int)tempLedIndex) + dLedIndex;
-        RgbColor color = changeColorBrightness(tempColor, NeoEase::SinusoidalIn(1.0 - 1.0 / mode->animationIntensity * dLedIndex));
+        RgbColor color = changeColorBrightness(tempColor, NeoEase::SinusoidalIn(1.0 - 1.0 / calcAnimationIntensity() * dLedIndex));
 
         if (leftLedIndex >= 0) {
           startFlashPixelAnimation(leftLedIndex, color);
@@ -34,7 +34,7 @@ class SolidExplosionsAnimation : public Animation {
       updatedColor = ledColorAnimationState[ledIndex].endColor;
       ledColorAnimationState[ledIndex].startColor = updatedColor;
       ledColorAnimationState[ledIndex].endColor = BLACK;
-      startUpdateLedColorChangeAnimation(ledIndex, calcAnimationTime() - abs(ledIndex - tempLedIndex) * calcAnimationTime() / mode->animationIntensity);
+      startUpdateLedColorChangeAnimation(ledIndex, calcAnimationTime() - abs(ledIndex - tempLedIndex) * calcAnimationTime() / calcAnimationIntensity());
     } else {
       updatedColor = RgbColor::LinearBlend(ledColorAnimationState[ledIndex].startColor, ledColorAnimationState[ledIndex].endColor, progress);
     }
@@ -42,12 +42,12 @@ class SolidExplosionsAnimation : public Animation {
   }
 
   void startFlashPixelAnimation(led_index_t ledIndex, RgbColor color) {
-    unsigned int duration = calcAnimationTime() / mode->animationIntensity;
+    unsigned int duration = calcAnimationTime() / calcAnimationIntensity();
 
     ledColorAnimationState[ledIndex].startColor = BLACK;
     ledColorAnimationState[ledIndex].endColor = color;
     Animation::animations->StartAnimation(ledIndex, duration, [=](const AnimationParam &param) { return this->updateFlashPixelAnimation(param); });
   }
 
-  uint16_t getDuration() { return 50; }
+  ScaleDescriptor getAnimationSpeedScale() { return ScaleDescriptor(SECONDS_TO_ANIMATION_TIME(0.3), SECONDS_TO_ANIMATION_TIME(3)); }
 };

@@ -21,12 +21,12 @@ bool LedStripMode::updateEntityFromJson(JsonObject &json, ErrorCallbackFunctionT
     animationProgressMode = json[JSON_FIELD_MODE_ANIMATION_PROGRESS_MODE];
   }
   if (json.containsKey(JSON_FIELD_MODE_ANIMATION_SPEED)) {
-    if (!validateRange(json, JSON_FIELD_MODE_ANIMATION_SPEED, 0, 255, errorCallback))
+    if (!validateRange(json, JSON_FIELD_MODE_ANIMATION_SPEED, Animation::inputScale.min, Animation::inputScale.max, errorCallback))
       return false;
     animationSpeed = json[JSON_FIELD_MODE_ANIMATION_SPEED];
   }
   if (json.containsKey(JSON_FIELD_MODE_ANIMATION_INTENSITY)) {
-    if (!validateRange(json, JSON_FIELD_MODE_ANIMATION_INTENSITY, 0, 255, errorCallback))
+    if (!validateRange(json, JSON_FIELD_MODE_ANIMATION_INTENSITY, Animation::inputScale.min, Animation::inputScale.max, errorCallback))
       return false;
     animationIntensity = json[JSON_FIELD_MODE_ANIMATION_INTENSITY];
   }

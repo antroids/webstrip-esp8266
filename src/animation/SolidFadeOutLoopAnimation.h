@@ -21,5 +21,5 @@ class SolidFadeOutLoopAnimation : public Animation {
     }
   }
 
-  uint16_t getDuration() { return 500; }
+  ScaleDescriptor getAnimationSpeedScale() { return ScaleDescriptor(SECONDS_TO_ANIMATION_TIME(0.5), SECONDS_TO_ANIMATION_TIME(5)); }
 };

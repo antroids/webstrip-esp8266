@@ -7,6 +7,7 @@ LedStripMode *Animation::mode;
 led_index_t Animation::pixelCount;
 RgbColor Animation::tempColor = BLACK;
 led_index_t Animation::tempLedIndex;
+ScaleDescriptor Animation::inputScale(0, 255);
 Log Animation::logger("Animation");
 
 void Animation::init(BufferedNeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> *strip, LedStripMode *mode) {
@@ -14,7 +15,7 @@ void Animation::init(BufferedNeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> *strip
   Animation::strip = strip;
   Animation::mode = mode;
   Animation::ledColorAnimationState = new LedColorAnimationState[Animation::pixelCount];
-  Animation::animations = new NeoPixelAnimator(strip->PixelCount() + 1, NEO_CENTISECONDS);
+  Animation::animations = new NeoPixelAnimator(strip->PixelCount() + 1, ANIMATION_TIME_UNIT);
 
   logger.infof("Animations initialized with '%d' pixels", Animation::pixelCount);
 }
@@ -56,6 +57,11 @@ void Animation::startUpdateLedColorChangeAnimation(led_index_t ledIndex, unsigne
   Animation::animations->StartAnimation(ledIndex, duration, updateLedColorChangeAnimation);
 }
 
+uint16_t Animation::convertToScale(ScaleDescriptor inputScale, ScaleDescriptor outputScale, uint16_t value) {
+  double normalizedInputValue = outputScale.modifier(((double)value - inputScale.min) / (inputScale.max - inputScale.min));
+  return outputScale.min + (outputScale.max - outputScale.min) * normalizedInputValue;
+}
+
 void Animation::processAnimation() {
   if (Animation::animations->IsAnimating()) {
     Animation::animations->UpdateAnimations();
@@ -89,10 +95,8 @@ void Animation::startTransitionAnimation() {
                                         [=](const AnimationParam &param) { return this->updateTransitionAnimation(param); });
 }
 
-unsigned int Animation::calcAnimationTime() {
-  unsigned int animationTime = getDuration() * (256 - Animation::mode->animationSpeed) / 128;
-  return animationTime > 0 ? animationTime : 1;
-}
+uint16_t Animation::calcAnimationTime() { return convertToScale(inputScale, getAnimationSpeedScale(), inputScale.max - mode->animationSpeed); }
+uint16_t Animation::calcAnimationIntensity() { return convertToScale(inputScale, getAnimationIntensityScale(), mode->animationIntensity); }
 
 void Animation::start() {
   strip->clearBufferColor(BLACK);
@@ -103,4 +107,5 @@ void Animation::update(const AnimationParam &param) {}
 
 void Animation::stop() { Animation::animations->StopAll(); }
 
-uint16_t Animation::getDuration() { return 200; }
+ScaleDescriptor Animation::getAnimationSpeedScale() { return ScaleDescriptor(SECONDS_TO_ANIMATION_TIME(0.1), SECONDS_TO_ANIMATION_TIME(2)); }
+ScaleDescriptor Animation::getAnimationIntensityScale() { return ScaleDescriptor(1, 20); }

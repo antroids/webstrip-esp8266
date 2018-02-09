@@ -9,13 +9,11 @@ class ShiftAnimation : public Animation {
   void update(const AnimationParam &param) {
     if (param.state == AnimationState_Completed) {
       if (mode->animationDirection) {
-        strip->RotateRight(mode->animationIntensity);
+        strip->RotateRight(calcAnimationIntensity());
       } else {
-        strip->RotateLeft(mode->animationIntensity);
+        strip->RotateLeft(calcAnimationIntensity());
       }
       restartMainAnimation();
     }
   }
-
-  uint16_t getDuration() { return 200; }
 };

@@ -21,6 +21,4 @@ class FadeAnimation : public Animation {
       restartMainAnimation();
     }
   }
-
-  uint16_t getDuration() { return 200; }
 };
