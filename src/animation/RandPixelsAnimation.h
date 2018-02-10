@@ -1,6 +1,10 @@
+#ifndef ANIMATION_RAND_PIXELS_ANIMATION_H
+#define ANIMATION_RAND_PIXELS_ANIMATION_H
+
 #include "animation/Animation.h"
 
 class RandPixelsAnimation : public Animation {
+protected:
   void start() {
     generateColors();
     startTransitionAnimation();
@@ -21,3 +25,5 @@ class RandPixelsAnimation : public Animation {
     }
   }
 };
+
+#endif

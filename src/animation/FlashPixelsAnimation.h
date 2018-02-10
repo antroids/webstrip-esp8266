@@ -1,6 +1,10 @@
+#ifndef ANIMATION_FLASH_PIXELS_ANIMATION_H
+#define ANIMATION_FLASH_PIXELS_ANIMATION_H
+
 #include "animation/Animation.h"
 
 class FlashPixelsAnimation : public Animation {
+protected:
   void update(const AnimationParam &param) {
     if (param.state == AnimationState_Completed) {
       for (led_index_t i = 0; i < calcAnimationIntensity(); i++) {
@@ -16,3 +20,5 @@ class FlashPixelsAnimation : public Animation {
     }
   }
 };
+
+#endif

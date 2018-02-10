@@ -1,25 +1,21 @@
+#ifndef ANIMATION_SOLID_FADE_OUT_LOOP_ANIMATION_H
+#define ANIMATION_SOLID_FADE_OUT_LOOP_ANIMATION_H
+
+#include "FadeOutLoopAnimation.h"
 #include "animation/Animation.h"
 
-class SolidFadeOutLoopAnimation : public Animation {
+class SolidFadeOutLoopAnimation : public FadeOutLoopAnimation {
+protected:
   void update(const AnimationParam &param) {
-    if (param.state == AnimationState_Completed) {
-      restartMainAnimation();
-    } else {
-      float progress = calcProgress(param);
-      led_index_t ledIndex = pixelCount * progress;
-      ledIndex = mode->animationDirection ? ledIndex : pixelCount - ledIndex;
-
-      if (param.state == AnimationState_Started) {
-        tempColor = generateColor(0);
-      }
-
-      if (!animations->IsAnimationActive(ledIndex)) {
-        ledColorAnimationState[ledIndex].startColor = tempColor;
-        ledColorAnimationState[ledIndex].endColor = BLACK;
-        startUpdateLedColorChangeAnimation(ledIndex, calcAnimationTime() / 10);
-      }
+    if (param.state == AnimationState_Started) {
+      tempColor = generateColor(0);
     }
+    FadeOutLoopAnimation::update(param);
   }
+
+  virtual RgbColor getColorForLedIndex(led_index_t ledIndex) { return tempColor; }
 
   ScaleDescriptor getAnimationSpeedScale() { return ScaleDescriptor(SECONDS_TO_ANIMATION_TIME(0.5), SECONDS_TO_ANIMATION_TIME(5)); }
 };
+
+#endif

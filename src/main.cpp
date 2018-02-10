@@ -13,6 +13,7 @@
 #include "Types.h"
 
 #include "animation/Animation.h"
+#include "animation/ExplosionsAnimation.h"
 #include "animation/FadeAnimation.h"
 #include "animation/FadeOutLoopAnimation.h"
 #include "animation/FlashPixelsAnimation.h"
@@ -47,9 +48,9 @@
 
 Log mainLogger("Main");
 
-Animation *animations[] = {new NoneAnimation(),        new ShiftAnimation(),          new FadeAnimation(),
-                           new RandPixelsAnimation(),  new FlashPixelsAnimation(),    new SolidFadeOutLoopAnimation(),
-                           new FadeOutLoopAnimation(), new SolidExplosionsAnimation()};
+Animation *animations[] = {new NoneAnimation(),        new ShiftAnimation(),           new FadeAnimation(),
+                           new RandPixelsAnimation(),  new FlashPixelsAnimation(),     new SolidFadeOutLoopAnimation(),
+                           new FadeOutLoopAnimation(), new SolidExplosionsAnimation(), new ExplosionsAnimation()};
 
 AnimationProgressMode *animationProgressModes[] = {new LinearAnimationProgressMode(), new SinInAnimationProgressMode(), new SinOutAnimationProgressMode(),
                                                    new SinInOutAnimationProgressMode()};

@@ -1,6 +1,10 @@
+#ifndef ANIMATION_FADE_ANIMATION_H
+#define ANIMATION_FADE_ANIMATION_H
+
 #include "animation/Animation.h"
 
 class FadeAnimation : public Animation {
+protected:
   void start() {
     generateColors();
     startTransitionAnimation();
@@ -22,3 +26,5 @@ class FadeAnimation : public Animation {
     }
   }
 };
+
+#endif
