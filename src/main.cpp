@@ -1,9 +1,10 @@
 #include <Arduino.h>
 
-#include "FS.h"
+#include "FileSystem.h"
 #include <ArduinoJson.h>
 #include <ArduinoOTA.h>
 #include <DNSServer.h>
+#include <ESP8266HTTPClient.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266WiFi.h> //https://github.com/esp8266/Arduino
 #include <ESP8266mDNS.h>
@@ -26,10 +27,10 @@
 #include "domain/Esp8266SysInfo.h"
 #include "domain/Options.h"
 
+#include "update/WebClientUpdater.h"
+
 #define MODE_JSON_FILE_PATH(INDEX) (String("/modes/mode") + String(INDEX) + String(".json"))
 #define OPTIONS_JSON_FILE_PATH "/web/options.json"
-#define INDEX_HTML_FILE_PATH "/web/index.html"
-#define INDEX_MIN_JS_GZ_FILE_PATH "/web/index.min.js.gz"
 
 #define MIME_JSON "application/json"
 #define MIME_HTML "text/html"
@@ -45,8 +46,6 @@
 #define ARG_AUTO_MODE_CHANGING "autoModeChanging"
 
 #define DOMAIN_POSTFIX ".local"
-
-Log mainLogger("Main");
 
 Animation *animations[] = {new NoneAnimation(),        new ShiftAnimation(),           new FadeAnimation(),
                            new RandPixelsAnimation(),  new FlashPixelsAnimation(),     new SolidFadeOutLoopAnimation(),
@@ -67,6 +66,7 @@ unsigned long modeChangeTime = 0;
 
 // Initialized after reading saved options
 ESP8266WebServer *server;
+HTTPClient *client;
 BufferedNeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> *strip;
 Animation *currentAnimation = Animation::getFromIndex(0);
 
@@ -85,7 +85,7 @@ bool requestErrorHandler(const char *errorMessage);
 void restart();
 
 void restart() {
-  mainLogger.info("Restarting...");
+  Log::mainLogger.info("Restarting...");
   WiFi.forceSleepBegin();
   ESP.reset();
 }
@@ -101,7 +101,7 @@ void initAnimations() { Animation::init(strip, &currentMode); }
 void initOTA() {
   ArduinoOTA.setHostname(currentOptions.domain);
   ArduinoOTA.onStart([]() {
-    mainLogger.info("OTA update started");
+    Log::mainLogger.info("OTA update started");
     if (ArduinoOTA.getCommand() == U_SPIFFS) {
       SPIFFS.end();
     }
@@ -109,13 +109,13 @@ void initOTA() {
     strip->Show();
   });
   ArduinoOTA.onEnd([]() {
-    mainLogger.info("OTA update completed");
+    Log::mainLogger.info("OTA update completed");
     strip->loadBufferColors([](RgbColor color, led_index_t ledIndex, float progress) { return BLUE; }, 0);
     strip->Show();
   });
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
     float p = ((float)progress) / total;
-    mainLogger.infof("OTA update progress %u / %u", progress, total);
+    Log::mainLogger.infof("OTA update progress %u / %u", progress, total);
     strip->loadBufferColors(
         [](RgbColor color, led_index_t ledIndex, float p) {
           if (ledIndex < currentOptions.pixelCount * p) {
@@ -133,9 +133,9 @@ void initMDNS() {
   uint16_t attempts = 3;
   while (attempts-- > 0) {
     if (!MDNS.begin(currentOptions.domain)) {
-      mainLogger.err("Error setting up MDNS responder!");
+      Log::mainLogger.err("Error setting up MDNS responder!");
     } else {
-      mainLogger.infof("MDNS configured for domain '%s'. Attempts: %d", currentOptions.domain, attempts);
+      Log::mainLogger.infof("MDNS configured for domain '%s'. Attempts: %d", currentOptions.domain, attempts);
       return;
     }
   }
@@ -150,7 +150,7 @@ void initDefaultColors() {
     currentMode.colors[i] = RgbColor(htmlColor);
   }
   currentMode.colorsCount = DEFAULT_COLORS_COUNT;
-  mainLogger.infof("Default '%d' colors loaded", currentMode.colorsCount);
+  Log::mainLogger.infof("Default '%d' colors loaded", currentMode.colorsCount);
 }
 
 void initDefaultMode() {
@@ -171,12 +171,12 @@ void initDefaultMode() {
 
 bool requestErrorHandler(const char *errorMessage) {
   sendError(errorMessage, HTTP_CODE_WRONG_REQUEST);
-  mainLogger.err(errorMessage);
+  Log::mainLogger.err(errorMessage);
   return false;
 }
 
 bool logErrorHandler(const char *errorMessage) {
-  mainLogger.err(errorMessage);
+  Log::mainLogger.err(errorMessage);
   return false;
 }
 
@@ -237,7 +237,7 @@ void sendError(const char *message, int httpCode) {
   DynamicJsonBuffer jsonBuffer;
   JsonObject &response = jsonBuffer.createObject();
   response["errorMessage"] = message;
-  mainLogger.err(message);
+  Log::mainLogger.err(message);
   sendJson(response, httpCode);
 }
 
@@ -245,16 +245,16 @@ void sendJson(JsonObject &json, const int httpCode) {
   char jsonCharBuffer[512];
   json.printTo(jsonCharBuffer);
   setupResponseHeaders();
-  mainLogger.info("Sending JSON response");
+  Log::mainLogger.info("Sending JSON response");
   server->send(httpCode, MIME_JSON, jsonCharBuffer);
 }
 
 void setLedStripAnimationMode(const index_id_t prevLedStripAnimationMode, const index_id_t newLedStripAnimationMode) {
-  mainLogger.infof("Changing animation mode from '%d' to '%d'", prevLedStripAnimationMode, newLedStripAnimationMode);
+  Log::mainLogger.infof("Changing animation mode from '%d' to '%d'", prevLedStripAnimationMode, newLedStripAnimationMode);
   Animation::getFromIndex(prevLedStripAnimationMode)->stop();
-  mainLogger.info("Stopping previous animation mode");
+  Log::mainLogger.info("Stopping previous animation mode");
   Animation::getFromIndex(newLedStripAnimationMode)->start();
-  mainLogger.info("Starting next animation mode");
+  Log::mainLogger.info("Starting next animation mode");
   currentAnimation = Animation::getFromIndex(newLedStripAnimationMode);
 }
 
@@ -270,20 +270,29 @@ void SetRandomSeed() {
 }
 
 void onRoot() {
-  if (!SPIFFS.exists(INDEX_HTML_FILE_PATH)) {
+  if (!SPIFFS.exists(WEB_CLIENT_HTML_FILE)) {
     sendError("File not found on server!", HTTP_CODE_SERVER_ERROR);
   }
-  File file = SPIFFS.open(INDEX_HTML_FILE_PATH, "r");
+  File file = SPIFFS.open(WEB_CLIENT_HTML_FILE, "r");
   server->streamFile(file, MIME_HTML);
   file.close();
 }
 
-void onIndexMinJsGz() {
-  if (!SPIFFS.exists(INDEX_MIN_JS_GZ_FILE_PATH)) {
+void onIndexJsGz() {
+  if (!SPIFFS.exists(WEB_CLIENT_JS_FILE)) {
     sendError("File not found on server!", HTTP_CODE_SERVER_ERROR);
   }
-  File file = SPIFFS.open(INDEX_MIN_JS_GZ_FILE_PATH, "r");
+  File file = SPIFFS.open(WEB_CLIENT_JS_FILE, "r");
   server->streamFile(file, MIME_JS);
+  file.close();
+}
+
+void onIndexCssGz() {
+  if (!SPIFFS.exists(WEB_CLIENT_CSS_FILE)) {
+    sendError("File not found on server!", HTTP_CODE_SERVER_ERROR);
+  }
+  File file = SPIFFS.open(WEB_CLIENT_CSS_FILE, "r");
+  server->streamFile(file, MIME_CSS);
   file.close();
 }
 
@@ -393,7 +402,14 @@ void onOtaUpdate() {
   ArduinoOTA.setHostname(currentOptions.domain);
   ArduinoOTA.begin();
   otaMode = true;
-  server->send(HTTP_CODE_OK, "text/plain", "Waiting for OTA update");
+  server->send(HTTP_CODE_OK, "text/plain", "Waiting for OTA update\n");
+}
+
+void onWebClientUpdate() {
+  WebClientUpdater updater([](const uint8_t status, float progress) { Log::mainLogger.infof("Update status %d progress %f", status, progress); });
+  if (updater.startUpdate(requestErrorHandler)) {
+    server->send(HTTP_CODE_OK, "text/plain", "Web client updated\n");
+  }
 }
 
 void onSysInfoGet() {
@@ -408,7 +424,10 @@ void onSysInfoGet() {
 
 void setupUrlMappings() {
   server->on("/", onRoot);
-  server->on("/index.min.js.gz", onIndexMinJsGz);
+  server->on("/static/js/main.js.gz", onIndexJsGz);
+  server->on("/static/css/main.css.gz", onIndexCssGz);
+  server->on("/static/js/main.js", onIndexJsGz);
+  server->on("/static/css/main.css", onIndexCssGz);
   server->on("/api/mode", HTTP_POST, onModePost);
   server->on("/api/mode", HTTP_GET, onModeGet);
   server->on("/api/saveMode", HTTP_GET, onSaveModeGet);
@@ -417,22 +436,24 @@ void setupUrlMappings() {
   server->on("/api/options", HTTP_POST, onOptionsPost);
   server->on("/api/options", HTTP_GET, onOptionsGet);
   server->on("/api/otaUpdate", onOtaUpdate);
+  server->on("/api/webClientUpdate", onWebClientUpdate);
   server->on("/api/sysInfo", onSysInfoGet);
   server->onNotFound(handleNotFound);
 }
 
 void initWebServer() {
   server = new ESP8266WebServer(currentOptions.port);
+  client = new HTTPClient();
   setupUrlMappings();
   server->begin();
 }
 
 void setup() {
   Serial.begin(115200);
-  mainLogger.info("Serial started");
+  Log::mainLogger.info("Serial started");
   SetRandomSeed();
   SPIFFS.begin();
-  mainLogger.info("SPIFFS started");
+  Log::mainLogger.info("SPIFFS started");
   // Print root dir content
 
   // Dir dir = SPIFFS.openDir("/web/");
@@ -443,27 +464,27 @@ void setup() {
   //   Serial.println(f.size());
   // }
   if (!loadOptionsFromFS()) {
-    mainLogger.err("Cannot load options from file, using predefined values");
+    Log::mainLogger.err("Cannot load options from file, using predefined values");
   }
 
   // network
   WiFiManager wifiManager;
   wifiManager.autoConnect(currentOptions.domain);
-  mainLogger.info("WiFiManager setup complete");
+  Log::mainLogger.info("WiFiManager setup complete");
   initOTA();
-  mainLogger.info("OTA setup completed");
+  Log::mainLogger.info("OTA setup completed");
   initMDNS();
-  mainLogger.info("MDNS started");
+  Log::mainLogger.info("MDNS started");
   initWebServer();
-  mainLogger.info("Web server started");
+  Log::mainLogger.info("Web server started");
 
   // strip
   initLedStrip();
-  mainLogger.info("Led strip initialized");
+  Log::mainLogger.info("Led strip initialized");
   initAnimations();
-  mainLogger.info("Animations initialized");
+  Log::mainLogger.info("Animations initialized");
   initDefaultMode();
-  mainLogger.info("Default mode loaded");
+  Log::mainLogger.info("Default mode loaded");
 }
 
 void loop() {

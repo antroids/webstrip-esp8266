@@ -20,6 +20,7 @@ struct LedColorAnimationState {
 };
 
 typedef double (*ScaleModificationFunction)(const double value);
+typedef uint16_t animation_duration_t;
 
 struct ScaleDescriptor {
   uint16_t min;
@@ -49,11 +50,12 @@ public:
   static void generateColors();
   static float calcProgress(const AnimationParam &param);
   static void updateLedColorChangeAnimation(const AnimationParam &param);
-  static void startUpdateLedColorChangeAnimation(led_index_t ledIndex, unsigned int duration);
+  static void startUpdateLedColorChangeAnimation(led_index_t ledIndex, animation_duration_t duration);
+  static void startUpdateLedColorChangeAnimation(led_index_t ledIndex, animation_duration_t duration, RgbColor fromColor, RgbColor toColor);
   static uint16_t convertToScale(ScaleDescriptor inputScale, ScaleDescriptor outputScale, uint16_t value);
 
-  uint16_t calcAnimationTime();
-  uint16_t calcAnimationIntensity();
+  animation_duration_t calcAnimationTime();
+  animation_duration_t calcAnimationIntensity();
   void processAnimation();
   void startMainAnimation();
   void restartMainAnimation();

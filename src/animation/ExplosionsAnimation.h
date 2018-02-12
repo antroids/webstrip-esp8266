@@ -36,10 +36,9 @@ protected:
     led_index_t ledIndex = param.index;
     RgbColor updatedColor;
     if (param.state == AnimationState_Completed) {
+      animation_duration_t duration = calcAnimationTime() - abs(ledIndex - tempLedIndex) * calcAnimationTime() / calcAnimationIntensity();
       updatedColor = ledColorAnimationState[ledIndex].endColor;
-      ledColorAnimationState[ledIndex].startColor = updatedColor;
-      ledColorAnimationState[ledIndex].endColor = BLACK;
-      startUpdateLedColorChangeAnimation(ledIndex, calcAnimationTime() - abs(ledIndex - tempLedIndex) * calcAnimationTime() / calcAnimationIntensity());
+      startUpdateLedColorChangeAnimation(ledIndex, duration, updatedColor, BLACK);
     } else {
       updatedColor = RgbColor::LinearBlend(ledColorAnimationState[ledIndex].startColor, ledColorAnimationState[ledIndex].endColor, progress);
     }

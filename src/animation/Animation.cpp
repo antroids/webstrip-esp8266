@@ -23,7 +23,6 @@ void Animation::init(BufferedNeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> *strip
 index_id_t Animation::getMainAnimationIndex() { return pixelCount; }
 
 RgbColor Animation::generateColor(led_index_t ledIndex) {
-  logger.infof("Generating color for led '%d'", ledIndex);
   return ColorSelectionMode::getFromIndex(mode->colorSelectionMode)->generateColor(ledIndex, pixelCount, mode);
 }
 
@@ -52,8 +51,13 @@ void Animation::updateLedColorChangeAnimation(const AnimationParam &param) {
   strip->SetPixelColor(ledIndex, updatedColor);
 }
 
-void Animation::startUpdateLedColorChangeAnimation(led_index_t ledIndex, unsigned int duration) {
-  logger.infof("Starting led color change animation for led '%d' with duration %u", ledIndex, duration);
+void Animation::startUpdateLedColorChangeAnimation(led_index_t ledIndex, animation_duration_t duration, RgbColor fromColor, RgbColor toColor) {
+  ledColorAnimationState[ledIndex].startColor = fromColor;
+  ledColorAnimationState[ledIndex].endColor = toColor;
+  startUpdateLedColorChangeAnimation(ledIndex, duration);
+}
+
+void Animation::startUpdateLedColorChangeAnimation(led_index_t ledIndex, animation_duration_t duration) {
   Animation::animations->StartAnimation(ledIndex, duration, updateLedColorChangeAnimation);
 }
 
@@ -95,8 +99,8 @@ void Animation::startTransitionAnimation() {
                                         [=](const AnimationParam &param) { return this->updateTransitionAnimation(param); });
 }
 
-uint16_t Animation::calcAnimationTime() { return convertToScale(inputScale, getAnimationSpeedScale(), inputScale.max - mode->animationSpeed); }
-uint16_t Animation::calcAnimationIntensity() { return convertToScale(inputScale, getAnimationIntensityScale(), mode->animationIntensity); }
+animation_duration_t Animation::calcAnimationTime() { return convertToScale(inputScale, getAnimationSpeedScale(), inputScale.max - mode->animationSpeed); }
+animation_duration_t Animation::calcAnimationIntensity() { return convertToScale(inputScale, getAnimationIntensityScale(), mode->animationIntensity); }
 
 void Animation::start() {
   strip->clearBufferColor(BLACK);

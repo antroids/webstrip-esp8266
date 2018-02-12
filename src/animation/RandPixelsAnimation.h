@@ -16,9 +16,7 @@ protected:
         led_index_t ledIndex = random(pixelCount);
 
         if (!animations->IsAnimationActive(ledIndex)) {
-          ledColorAnimationState[ledIndex].startColor = strip->getBufferColor(ledIndex);
-          ledColorAnimationState[ledIndex].endColor = generateColor(ledIndex);
-          startUpdateLedColorChangeAnimation(ledIndex, calcAnimationTime() * 10);
+          startUpdateLedColorChangeAnimation(ledIndex, calcAnimationTime() * 10, strip->getBufferColor(ledIndex), generateColor(ledIndex));
         }
       }
       restartMainAnimation();

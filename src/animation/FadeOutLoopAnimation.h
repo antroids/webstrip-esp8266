@@ -14,9 +14,7 @@ protected:
       ledIndex = mode->animationDirection ? ledIndex : pixelCount - ledIndex;
 
       if (!animations->IsAnimationActive(ledIndex)) {
-        ledColorAnimationState[ledIndex].startColor = getColorForLedIndex(ledIndex);
-        ledColorAnimationState[ledIndex].endColor = BLACK;
-        startUpdateLedColorChangeAnimation(ledIndex, calcAnimationTime() / 10);
+        startUpdateLedColorChangeAnimation(ledIndex, calcAnimationTime() / 10, getColorForLedIndex(ledIndex), BLACK);
       }
     }
   }

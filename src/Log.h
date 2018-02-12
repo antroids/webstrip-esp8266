@@ -7,7 +7,7 @@
 #define LOG_BUFFER_SIZE 256
 
 #ifndef LOG_DEFAULT_LEVEL
-#define LOG_DEFAULT_LEVEL ERR
+#define LOG_DEFAULT_LEVEL INFO
 #endif
 
 class Log {
@@ -20,7 +20,7 @@ public:
   static const char *WARN_NAME;
   static const char *ERR_NAME;
 
-  static const Log instance;
+  static Log mainLogger;
 
   uint8_t _level = LOG_DEFAULT_LEVEL;
   const char *_name;
@@ -80,7 +80,7 @@ public:
     va_end(vl);
   }
 
-private:
+protected:
   void vlogf(const char *tpl, uint8_t level, va_list args) {
     char buf[LOG_BUFFER_SIZE];
     vsprintf(buf, tpl, args);
