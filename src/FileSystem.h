@@ -9,6 +9,7 @@
 #include <limits.h>
 
 #define TEMP_DIR "/temp"
+#define TEMP_FILE_MAX_LENGTH 32
 
 class FileSystem : public FS {
 public:

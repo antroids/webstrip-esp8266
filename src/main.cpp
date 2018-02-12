@@ -30,7 +30,7 @@
 #include "update/WebClientUpdater.h"
 
 #define MODE_JSON_FILE_PATH(INDEX) (String("/modes/mode") + String(INDEX) + String(".json"))
-#define OPTIONS_JSON_FILE_PATH "/web/options.json"
+#define OPTIONS_JSON_FILE_PATH "/options.json"
 
 #define MIME_JSON "application/json"
 #define MIME_HTML "text/html"
@@ -407,8 +407,19 @@ void onOtaUpdate() {
 
 void onWebClientUpdate() {
   WebClientUpdater updater([](const uint8_t status, float progress) { Log::mainLogger.infof("Update status %d progress %f", status, progress); });
-  if (updater.startUpdate(requestErrorHandler)) {
-    server->send(HTTP_CODE_OK, "text/plain", "Web client updated\n");
+  if (server->hasArg("update") && ((bool)server->arg("update"))) {
+    if (updater.startUpdate(requestErrorHandler)) {
+      server->send(HTTP_CODE_OK, "text/plain", "Web client updated\n");
+    }
+  } else {
+    UpdaterVersionInfo versionInfo = updater.getVersionInfo(requestErrorHandler);
+    if (versionInfo != UpdaterVersionInfo::invalid) {
+      DynamicJsonBuffer jsonBuffer;
+      JsonObject &json = jsonBuffer.createObject();
+      if (versionInfo.updateJsonFromEntity(json, requestErrorHandler)) {
+        sendJson(json, HTTP_CODE_OK);
+      }
+    }
   }
 }
 

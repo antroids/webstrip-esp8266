@@ -3,9 +3,13 @@
 
 #include "HTTPUpdater.h"
 
+#define WEB_CLIENT_VERSION_URL "http://s3.amazonaws.com/antroids-webstrip/webclient/webclient.json"
+
 #define WEB_CLIENT_HTML_URL "http://s3.amazonaws.com/antroids-webstrip/webclient/index.html"
 #define WEB_CLIENT_JS_URL "http://s3.amazonaws.com/antroids-webstrip/webclient/static/js/main.js.gz"
 #define WEB_CLIENT_CSS_URL "http://s3.amazonaws.com/antroids-webstrip/webclient/static/css/main.css.gz"
+
+#define WEB_CLIENT_VERSION_FILE "/web/webclient.json"
 
 #define WEB_CLIENT_HTML_FILE "/web/index.html"
 #define WEB_CLIENT_JS_FILE "/web/static/js/main.js.gz"
@@ -17,9 +21,9 @@ public:
 
 protected:
   bool update(ErrorCallbackFunctionType errorCallback) {
-    char tempHtmlFileName[32] = {0};
-    char tempJsFileName[32] = {0};
-    char tempCssFileName[32] = {0};
+    char tempHtmlFileName[TEMP_FILE_MAX_LENGTH] = {0};
+    char tempJsFileName[TEMP_FILE_MAX_LENGTH] = {0};
+    char tempCssFileName[TEMP_FILE_MAX_LENGTH] = {0};
     bool result = true;
 
     SPIFFS.generateTempFileName(tempHtmlFileName);
@@ -50,19 +54,39 @@ protected:
     if (SPIFFS.exists(WEB_CLIENT_HTML_FILE) && SPIFFS.remove(WEB_CLIENT_HTML_FILE)) {
       Log::mainLogger.info("Old HTML file removed");
     }
-    SPIFFS.rename(tempHtmlFileName, WEB_CLIENT_HTML_FILE);
+    if (!SPIFFS.rename(tempHtmlFileName, WEB_CLIENT_HTML_FILE)) {
+      return errorCallback("Can't rename HTML file");
+    }
     if (SPIFFS.exists(WEB_CLIENT_JS_FILE) && SPIFFS.remove(WEB_CLIENT_JS_FILE)) {
       Log::mainLogger.info("Old JS file removed");
     }
-    SPIFFS.rename(tempJsFileName, WEB_CLIENT_JS_FILE);
+    if (!SPIFFS.rename(tempJsFileName, WEB_CLIENT_JS_FILE)) {
+      return errorCallback("Can't rename JS file");
+    }
     if (SPIFFS.exists(WEB_CLIENT_CSS_FILE) && SPIFFS.remove(WEB_CLIENT_CSS_FILE)) {
       Log::mainLogger.info("Old CSS file removed");
     }
-    SPIFFS.rename(tempCssFileName, WEB_CLIENT_CSS_FILE);
+    if (!SPIFFS.rename(tempCssFileName, WEB_CLIENT_CSS_FILE)) {
+      return errorCallback("Can't rename CSS file");
+    }
+    UpdaterVersionInfo versionInfo = getVersionInfo(errorCallback);
+    if (versionInfo == UpdaterVersionInfo::invalid) {
+      return false;
+    }
+    versionInfo.currentVersion = versionInfo.availableVersion;
+    DynamicJsonBuffer jsonBuffer;
+    JsonObject &json = jsonBuffer.createObject();
+    versionInfo.updateJsonFromEntity(json, errorCallback);
+    if (!SPIFFS.saveJson(json, WEB_CLIENT_VERSION_FILE, errorCallback)) {
+      return errorCallback("Can't save Webclient version json");
+    }
     Log::mainLogger.info("Webclient updated");
 
     return true;
   }
+
+  const char *getVersionInfoUrl() { return WEB_CLIENT_VERSION_URL; }
+  const char *getVersionInfoFilePath() { return WEB_CLIENT_VERSION_FILE; }
 };
 
 #endif
