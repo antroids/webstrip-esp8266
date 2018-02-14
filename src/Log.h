@@ -80,6 +80,11 @@ public:
     va_end(vl);
   }
 
+  static bool logErrorHandler(const char *errorMessage) {
+    Log::mainLogger.err(errorMessage);
+    return false;
+  }
+
 protected:
   void vlogf(const char *tpl, uint8_t level, va_list args) {
     char buf[LOG_BUFFER_SIZE];

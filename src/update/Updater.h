@@ -3,7 +3,7 @@
 
 #include "../Types.h"
 
-typedef void (*UpdaterStatusCallbackFunctionType)(const uint8_t status, float progress);
+typedef std::function<void(const uint8_t, float)> UpdaterStatusCallbackFunctionType;
 
 #define UPDATER_STATUS_BEFORE 0
 #define UPDATER_STATUS_START 1

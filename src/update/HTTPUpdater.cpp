@@ -38,15 +38,12 @@ bool HTTPUpdater::saveFile(const char *url, const char *filePath, ErrorCallbackF
 }
 
 UpdaterVersionInfo HTTPUpdater::getVersionInfo(ErrorCallbackFunctionType errorCallback) {
-  DynamicJsonBuffer currentBuffer;
-  DynamicJsonBuffer availableBuffer;
   UpdaterVersionInfo current;
   UpdaterVersionInfo available;
   char buf[TEMP_FILE_MAX_LENGTH] = {0};
 
   if (SPIFFS.exists(getVersionInfoFilePath())) {
-    JsonObject &currentJson = SPIFFS.loadJson(&currentBuffer, getVersionInfoFilePath(), errorCallback);
-    if (currentJson == JsonObject::invalid() || !current.updateEntityFromJson(currentJson, errorCallback)) {
+    if (SPIFFS.loadJson(&current, getVersionInfoFilePath(), errorCallback)) {
       return UpdaterVersionInfo::invalid;
     }
   } else {
@@ -59,9 +56,7 @@ UpdaterVersionInfo HTTPUpdater::getVersionInfo(ErrorCallbackFunctionType errorCa
     return UpdaterVersionInfo::invalid;
   }
   Log::mainLogger.info("Version file downloaded");
-  JsonObject &availableJson = SPIFFS.loadJson(&availableBuffer, buf, errorCallback);
-  if (availableJson == JsonObject::invalid() || !available.updateEntityFromJson(availableJson, errorCallback)) {
-    Log::mainLogger.errf("Can't load JSON from file '%s'", buf);
+  if (!SPIFFS.loadJson(&available, buf, errorCallback)) {
     SPIFFS.remove(buf);
     return UpdaterVersionInfo::invalid;
   }

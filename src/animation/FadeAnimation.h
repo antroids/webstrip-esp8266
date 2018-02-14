@@ -4,6 +4,9 @@
 #include "animation/Animation.h"
 
 class FadeAnimation : public Animation {
+public:
+  FadeAnimation(Context *_context) : Animation(_context){};
+
 protected:
   void start() {
     generateColors();
@@ -12,7 +15,7 @@ protected:
 
   void update(const AnimationParam &param) {
     float progress = calcProgress(param);
-    strip->loadBufferColors(
+    getStrip()->loadBufferColors(
         [](RgbColor color, led_index_t ledIndex, float progress) -> RgbColor {
           if (progress < 0.5) {
             return changeColorBrightness(color, 1 - progress * 2);

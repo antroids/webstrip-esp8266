@@ -1,6 +1,8 @@
 #include "LedStripMode.h"
 
 bool LedStripMode::updateEntityFromJson(JsonObject &json, ErrorCallbackFunctionType errorCallback) {
+  index_id_t am = animationMode;
+
   if (json.containsKey(JSON_FIELD_MODE_DESCRIPTION)) {
     String description = json[JSON_FIELD_MODE_DESCRIPTION];
     description.toCharArray(this->description, MODE_DESCRIPTION_SIZE);
@@ -13,7 +15,7 @@ bool LedStripMode::updateEntityFromJson(JsonObject &json, ErrorCallbackFunctionT
   if (json.containsKey(JSON_FIELD_MODE_ANIMATION_MODE)) {
     if (!validateRange(json, JSON_FIELD_MODE_ANIMATION_MODE, 0, Animation::getCount() - 1, errorCallback))
       return false;
-    animationMode = json[JSON_FIELD_MODE_ANIMATION_MODE];
+    am = json[JSON_FIELD_MODE_ANIMATION_MODE];
   }
   if (json.containsKey(JSON_FIELD_MODE_ANIMATION_PROGRESS_MODE)) {
     if (!validateRange(json, JSON_FIELD_MODE_ANIMATION_PROGRESS_MODE, 0, AnimationProgressMode::getCount() - 1, errorCallback))
@@ -55,6 +57,7 @@ bool LedStripMode::updateEntityFromJson(JsonObject &json, ErrorCallbackFunctionT
     colorsCount = colorsArray.size();
   }
 
+  setAnimationMode(am);
   return true;
 };
 
@@ -78,3 +81,12 @@ bool LedStripMode::updateJsonFromEntity(JsonObject &json, ErrorCallbackFunctionT
   json[JSON_FIELD_MODE_ANIMATION_PROGRESS_MODE] = animationProgressMode;
   return true;
 };
+
+void LedStripMode::setAnimationMode(const index_id_t newLedStripAnimationMode) {
+  Log::mainLogger.infof("Changing animation mode from '%d' to '%d'", animationMode, newLedStripAnimationMode);
+  Animation::getFromIndex(animationMode)->stop();
+  Log::mainLogger.info("Stopping previous animation mode");
+  Animation::getFromIndex(newLedStripAnimationMode)->start();
+  Log::mainLogger.info("Starting next animation mode");
+  animationMode = newLedStripAnimationMode;
+}

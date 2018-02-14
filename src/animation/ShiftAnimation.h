@@ -4,6 +4,9 @@
 #include "animation/Animation.h"
 
 class ShiftAnimation : public Animation {
+public:
+  ShiftAnimation(Context *_context) : Animation(_context){};
+
 protected:
   void start() {
     generateColors();
@@ -12,10 +15,10 @@ protected:
 
   void update(const AnimationParam &param) {
     if (param.state == AnimationState_Completed) {
-      if (mode->animationDirection) {
-        strip->RotateRight(calcAnimationIntensity());
+      if (getMode()->animationDirection) {
+        getStrip()->RotateRight(calcAnimationIntensity());
       } else {
-        strip->RotateLeft(calcAnimationIntensity());
+        getStrip()->RotateLeft(calcAnimationIntensity());
       }
       restartMainAnimation();
     }

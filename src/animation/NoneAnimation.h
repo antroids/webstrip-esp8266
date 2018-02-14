@@ -4,6 +4,9 @@
 #include "animation/Animation.h"
 
 class NoneAnimation : public Animation {
+public:
+  NoneAnimation(Context *_context) : Animation(_context){};
+
 protected:
   void start() {
     generateColors();

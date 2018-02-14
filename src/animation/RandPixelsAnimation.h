@@ -4,6 +4,9 @@
 #include "animation/Animation.h"
 
 class RandPixelsAnimation : public Animation {
+public:
+  RandPixelsAnimation(Context *_context) : Animation(_context){};
+
 protected:
   void start() {
     generateColors();
@@ -13,10 +16,10 @@ protected:
   void update(const AnimationParam &param) {
     if (param.state == AnimationState_Completed) {
       for (led_index_t i = 0; i < calcAnimationIntensity(); i++) {
-        led_index_t ledIndex = random(pixelCount);
+        led_index_t ledIndex = random(getPixelCount());
 
-        if (!animations->IsAnimationActive(ledIndex)) {
-          startUpdateLedColorChangeAnimation(ledIndex, calcAnimationTime() * 10, strip->getBufferColor(ledIndex), generateColor(ledIndex));
+        if (!getAnimator()->IsAnimationActive(ledIndex)) {
+          startUpdateLedColorChangeAnimation(ledIndex, calcAnimationTime() * 10, getStrip()->getBufferColor(ledIndex), generateColor(ledIndex));
         }
       }
       restartMainAnimation();

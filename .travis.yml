@@ -16,6 +16,7 @@ script:
 - mkdir upload
 - platformio run
 - cp .pioenvs/nodemcuv2/firmware.bin upload/esp8266.bin
+- echo "{'availableVersion':'$TRAVIS_BUILD_NUMBER'}" > upload/esp8266.json
 deploy:
   skip_cleanup: true
   provider: s3

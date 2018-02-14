@@ -33,43 +33,51 @@ struct ScaleDescriptor {
 
 class Animation : public StaticIndex<Animation, 32> {
 public:
-  static Log logger;
-
-  static NeoPixelAnimator *animations;
-  static LedColorAnimationState *ledColorAnimationState;
-  static BufferedNeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> *strip;
-  static LedStripMode *mode;
-  static led_index_t pixelCount;
-  static RgbColor tempColor;
-  static led_index_t tempLedIndex;
   static ScaleDescriptor inputScale;
 
-  static void init(BufferedNeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> *strip, LedStripMode *mode);
-  static index_id_t getMainAnimationIndex();
-  static RgbColor generateColor(led_index_t ledIndex);
-  static void generateColors();
-  static float calcProgress(const AnimationParam &param);
-  static void updateLedColorChangeAnimation(const AnimationParam &param);
-  static void startUpdateLedColorChangeAnimation(led_index_t ledIndex, animation_duration_t duration);
-  static void startUpdateLedColorChangeAnimation(led_index_t ledIndex, animation_duration_t duration, RgbColor fromColor, RgbColor toColor);
-  static uint16_t convertToScale(ScaleDescriptor inputScale, ScaleDescriptor outputScale, uint16_t value);
+  void showProgress(const RgbColor bgColor, const RgbColor doneColor, float progress);
+
+  void processAnimation();
+  virtual void start();
+  virtual void stop();
+
+  Animation(Context *_context) : StaticIndex(this), context(_context){};
+
+protected:
+  static Log logger;
+
+  static RgbColor tempColor;
+  static led_index_t tempLedIndex;
+
+  const Context *context;
+
+  index_id_t getMainAnimationIndex();
+  RgbColor generateColor(led_index_t ledIndex);
+  void generateColors();
+  float calcProgress(const AnimationParam &param);
+  void updateLedColorChangeAnimation(const AnimationParam &param);
+  void startUpdateLedColorChangeAnimation(led_index_t ledIndex, animation_duration_t duration);
+  void startUpdateLedColorChangeAnimation(led_index_t ledIndex, animation_duration_t duration, RgbColor fromColor, RgbColor toColor);
+  uint16_t convertToScale(ScaleDescriptor inputScale, ScaleDescriptor outputScale, uint16_t value);
+
+  LedStripMode *getMode();
+  led_index_t getPixelCount();
+  BufferedNeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> *getStrip();
+  LedColorAnimationState *getLedColorAnimationState();
+  NeoPixelAnimator *getAnimator();
 
   animation_duration_t calcAnimationTime();
   animation_duration_t calcAnimationIntensity();
-  void processAnimation();
   void startMainAnimation();
   void restartMainAnimation();
   void updateTransitionAnimation(const AnimationParam &param);
   void startTransitionAnimation();
-  virtual void start();
   virtual void update(const AnimationParam &param);
-  virtual void stop();
   virtual ScaleDescriptor getAnimationSpeedScale();
   virtual ScaleDescriptor getAnimationIntensityScale();
-
-  Animation() : StaticIndex(this){};
 };
 
+#include "../Context.h"
 #include "../domain/ColorSelectionMode.h"
 #include "../domain/LedStripMode.h"
 

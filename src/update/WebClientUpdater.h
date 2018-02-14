@@ -32,6 +32,7 @@ protected:
       Log::mainLogger.errf("Can't download from %s to %s", WEB_CLIENT_HTML_URL, tempHtmlFileName);
       return false;
     }
+    statusCallback(UPDATER_STATUS_PROGRESS, 0.15);
     Log::mainLogger.infof("File downloaded from %s to %s", WEB_CLIENT_HTML_URL, tempHtmlFileName);
     SPIFFS.generateTempFileName(tempJsFileName);
     if (!saveFile(WEB_CLIENT_JS_URL, tempJsFileName, errorCallback)) {
@@ -40,6 +41,7 @@ protected:
       Log::mainLogger.errf("Can't download from %s to %s", WEB_CLIENT_JS_URL, tempJsFileName);
       return false;
     }
+    statusCallback(UPDATER_STATUS_PROGRESS, 0.50);
     Log::mainLogger.infof("File downloaded from %s to %s", WEB_CLIENT_JS_URL, tempJsFileName);
     SPIFFS.generateTempFileName(tempCssFileName);
     if (!saveFile(WEB_CLIENT_CSS_URL, tempCssFileName, errorCallback)) {
@@ -49,6 +51,7 @@ protected:
       Log::mainLogger.errf("Can't download from %s to %s", WEB_CLIENT_CSS_URL, tempCssFileName);
       return false;
     }
+    statusCallback(UPDATER_STATUS_PROGRESS, 0.75);
     Log::mainLogger.infof("File downloaded from %s to %s", WEB_CLIENT_CSS_URL, tempCssFileName);
 
     if (SPIFFS.exists(WEB_CLIENT_HTML_FILE) && SPIFFS.remove(WEB_CLIENT_HTML_FILE)) {
@@ -69,15 +72,14 @@ protected:
     if (!SPIFFS.rename(tempCssFileName, WEB_CLIENT_CSS_FILE)) {
       return errorCallback("Can't rename CSS file");
     }
+    statusCallback(UPDATER_STATUS_PROGRESS, 0.80);
     UpdaterVersionInfo versionInfo = getVersionInfo(errorCallback);
     if (versionInfo == UpdaterVersionInfo::invalid) {
       return false;
     }
+    statusCallback(UPDATER_STATUS_PROGRESS, 0.95);
     versionInfo.currentVersion = versionInfo.availableVersion;
-    DynamicJsonBuffer jsonBuffer;
-    JsonObject &json = jsonBuffer.createObject();
-    versionInfo.updateJsonFromEntity(json, errorCallback);
-    if (!SPIFFS.saveJson(json, WEB_CLIENT_VERSION_FILE, errorCallback)) {
+    if (!SPIFFS.saveJson(&versionInfo, WEB_CLIENT_VERSION_FILE, errorCallback)) {
       return errorCallback("Can't save Webclient version json");
     }
     Log::mainLogger.info("Webclient updated");

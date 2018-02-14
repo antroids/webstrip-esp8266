@@ -12,6 +12,9 @@ const RgbColor YELLOW(255, 255, 0);
 const RgbColor GREEN(0, 255, 0);
 const RgbColor BLUE(0, 0, 255);
 
+const RgbColor PROGRESS_BG(255, 153, 0);
+const RgbColor PROGRESS_DONE(0, 255, 0);
+
 inline RgbColor changeColorBrightness(RgbColor color, float brightness) { return RgbColor::LinearBlend(color, BLACK, 1 - brightness); }
 
 #endif

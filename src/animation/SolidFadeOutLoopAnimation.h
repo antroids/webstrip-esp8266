@@ -5,6 +5,9 @@
 #include "animation/Animation.h"
 
 class SolidFadeOutLoopAnimation : public FadeOutLoopAnimation {
+public:
+  SolidFadeOutLoopAnimation(Context *_context) : FadeOutLoopAnimation(_context){};
+
 protected:
   void update(const AnimationParam &param) {
     if (param.state == AnimationState_Started) {

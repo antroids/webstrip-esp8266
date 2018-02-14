@@ -5,6 +5,9 @@
 #include "animation/Animation.h"
 
 class SolidExplosionsAnimation : public ExplosionsAnimation {
+public:
+  SolidExplosionsAnimation(Context *_context) : ExplosionsAnimation(_context){};
+
 protected:
   void update(const AnimationParam &param) {
     if (param.state == AnimationState_Started) {

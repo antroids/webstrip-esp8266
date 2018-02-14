@@ -4,6 +4,8 @@
 #include "JsonEntity.h"
 #include <Arduino.h>
 
+#define OPTIONS_JSON_FILE_PATH "/options.json"
+
 #define JSON_FIELD_OPTIONS_DOMAIN "domain"
 #define JSON_FIELD_OPTIONS_DOMAIN_SIZE 32
 #define JSON_FIELD_OPTIONS_PIXEL_COUNT "pixelCount"
@@ -27,14 +29,14 @@ public:
       d.toCharArray(this->domain, JSON_FIELD_OPTIONS_DOMAIN_SIZE);
     }
     return true;
-  };
+  }
 
   bool updateJsonFromEntity(JsonObject &json, ErrorCallbackFunctionType errorCallback) {
     json[JSON_FIELD_OPTIONS_PIXEL_COUNT] = pixelCount;
     json[JSON_FIELD_OPTIONS_PORT] = port;
     json[JSON_FIELD_OPTIONS_DOMAIN] = domain;
     return true;
-  };
+  }
 };
 
 #endif

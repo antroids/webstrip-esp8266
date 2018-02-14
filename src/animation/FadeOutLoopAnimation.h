@@ -4,16 +4,19 @@
 #include "animation/Animation.h"
 
 class FadeOutLoopAnimation : public Animation {
+public:
+  FadeOutLoopAnimation(Context *_context) : Animation(_context){};
+
 protected:
   void update(const AnimationParam &param) {
     if (param.state == AnimationState_Completed) {
       restartMainAnimation();
     } else {
       float progress = calcProgress(param);
-      led_index_t ledIndex = pixelCount * progress;
-      ledIndex = mode->animationDirection ? ledIndex : pixelCount - ledIndex;
+      led_index_t ledIndex = getPixelCount() * progress;
+      ledIndex = getMode()->animationDirection ? ledIndex : getPixelCount() - ledIndex;
 
-      if (!animations->IsAnimationActive(ledIndex)) {
+      if (!getAnimator()->IsAnimationActive(ledIndex)) {
         startUpdateLedColorChangeAnimation(ledIndex, calcAnimationTime() / 10, getColorForLedIndex(ledIndex), BLACK);
       }
     }

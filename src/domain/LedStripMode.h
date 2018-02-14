@@ -6,6 +6,8 @@
 #include "JsonEntity.h"
 #include <Arduino.h>
 
+#define MODE_JSON_FILE_PATH(INDEX) (String("/modes/mode") + String(INDEX) + String(".json"))
+
 #define JSON_FIELD_MODE_INDEX "index"
 #define JSON_FIELD_MODE_DESCRIPTION "description"
 #define JSON_FIELD_MODE_COLORS "colors"
@@ -39,6 +41,8 @@ public:
 
   bool updateEntityFromJson(JsonObject &json, ErrorCallbackFunctionType errorCallback);
   bool updateJsonFromEntity(JsonObject &json, ErrorCallbackFunctionType errorCallback);
+
+  void setAnimationMode(const index_id_t newLedStripAnimationMode);
 };
 
 #include "../animation/Animation.h"
