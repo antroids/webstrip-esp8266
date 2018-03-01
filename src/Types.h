@@ -14,4 +14,9 @@ struct Context;
 class LedStripMode;
 class Animation;
 
+class UpdateHandler {
+public:
+  virtual void handleUpdate() = 0;
+};
+
 #endif

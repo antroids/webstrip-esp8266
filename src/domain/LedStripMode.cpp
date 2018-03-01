@@ -1,3 +1,4 @@
+#include "ColorSelectionMode.h"
 #include "LedStripMode.h"
 
 bool LedStripMode::updateEntityFromJson(JsonObject &json, ErrorCallbackFunctionType errorCallback) {

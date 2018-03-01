@@ -1,3 +1,6 @@
+#include "../Context.h"
+#include "../domain/ColorSelectionMode.h"
+#include "../domain/LedStripMode.h"
 #include "animation/Animation.h"
 
 RgbColor Animation::tempColor = BLACK;

@@ -7,6 +7,8 @@
 #include "domain/LedStripMode.h"
 #include "domain/Options.h"
 
+#include "web/ESP8266HTTPServer.h"
+
 #include "animation/ExplosionsAnimation.h"
 #include "animation/FadeAnimation.h"
 #include "animation/FadeOutLoopAnimation.h"
@@ -29,6 +31,7 @@ public:
   LedStripMode *mode;
   Options *options;
 
+  HTTPServer *httpServer;
   JsonApi *api;
 
   bool otaMode = false;
@@ -60,10 +63,19 @@ public:
     mode = new LedStripMode();
     initDefaultMode();
 
+    httpServer = new ESP8266HTTPServer(options->port);
     api = new JsonApi(this);
   }
 
-  ~Context() {}
+  ~Context() {
+    delete api;
+    delete httpServer;
+    delete mode;
+    delete animator;
+    delete[] ledColorAnimationState;
+    delete strip;
+    delete options;
+  }
 
   Animation *getCurrentAnimation() { return Animation::getFromIndex(mode->animationMode); }
 

@@ -77,8 +77,4 @@ protected:
   virtual ScaleDescriptor getAnimationIntensityScale();
 };
 
-#include "../Context.h"
-#include "../domain/ColorSelectionMode.h"
-#include "../domain/LedStripMode.h"
-
 #endif

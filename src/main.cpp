@@ -105,7 +105,7 @@ void loop() {
       SPIFFS.loadJson(context->mode, MODE_JSON_FILE_PATH(context->mode->nextMode), Log::logErrorHandler);
       context->modeChangeTime = millis();
     }
-    context->api->processConnection();
+    context->api->handleUpdate();
     context->getCurrentAnimation()->processAnimation();
   }
 }

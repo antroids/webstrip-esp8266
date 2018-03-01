@@ -1,6 +1,7 @@
 #ifndef UPDATE_WEB_CLIENT_UPDATER_H
 #define UPDATE_WEB_CLIENT_UPDATER_H
 
+#include "../api/JsonApi.h"
 #include "HTTPUpdater.h"
 
 #define WEB_CLIENT_VERSION_URL "http://s3.amazonaws.com/antroids-webstrip/webclient/webclient.json"
@@ -11,9 +12,9 @@
 
 #define WEB_CLIENT_VERSION_FILE "/web/webclient.json"
 
-#define WEB_CLIENT_HTML_FILE "/web/index.html"
-#define WEB_CLIENT_JS_FILE "/web/static/js/main.js.gz"
-#define WEB_CLIENT_CSS_FILE "/web/static/css/main.css.gz"
+#define WEB_CLIENT_HTML_FILE (JsonApi::WEB_CLIENT_HTML_FILE_PATH)
+#define WEB_CLIENT_JS_FILE (JsonApi::WEB_CLIENT_JS_FILE_PATH)
+#define WEB_CLIENT_CSS_FILE (JsonApi::WEB_CLIENT_CSS_FILE_PATH)
 
 class WebClientUpdater : public HTTPUpdater {
 public:

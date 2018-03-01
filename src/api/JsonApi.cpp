@@ -1,130 +1,111 @@
+#include "../Context.h"
+#include "../update/WebClientUpdater.h"
+#include "../web/HTTPServer.h"
 #include "JsonApi.h"
 
+const char *JsonApi::WEB_CLIENT_HTML_FILE_PATH = "/web/index.html";
+const char *JsonApi::WEB_CLIENT_JS_FILE_PATH = "/web/static/js/main.js.gz";
+const char *JsonApi::WEB_CLIENT_CSS_FILE_PATH = "/web/static/css/main.css.gz";
+
+void JsonApi::handleUpdate() { server->handleUpdate(); }
+
 void JsonApi::initUrlMappings() {
-  server->on("/", VOID_METHOD_TO_FUNCTION(onRoot));
-  server->on("/static/js/main.js.gz", VOID_METHOD_TO_FUNCTION(onIndexJsGz));
-  server->on("/static/css/main.css.gz", VOID_METHOD_TO_FUNCTION(onIndexCssGz));
-  server->on("/static/js/main.js", VOID_METHOD_TO_FUNCTION(onIndexJsGz));
-  server->on("/static/css/main.css", VOID_METHOD_TO_FUNCTION(onIndexCssGz));
-  server->on("/api/mode", HTTP_POST, VOID_METHOD_TO_FUNCTION(onModePost));
-  server->on("/api/mode", HTTP_GET, VOID_METHOD_TO_FUNCTION(onModeGet));
-  server->on("/api/saveMode", HTTP_GET, VOID_METHOD_TO_FUNCTION(onSaveModeGet));
-  server->on("/api/loadMode", HTTP_GET, VOID_METHOD_TO_FUNCTION(onLoadModeGet));
-  server->on("/api/listModes", HTTP_GET, VOID_METHOD_TO_FUNCTION(onListModesGet));
-  server->on("/api/options", HTTP_POST, VOID_METHOD_TO_FUNCTION(onOptionsPost));
-  server->on("/api/options", HTTP_GET, VOID_METHOD_TO_FUNCTION(onOptionsGet));
-  server->on("/api/otaUpdate", VOID_METHOD_TO_FUNCTION(onOtaUpdate));
-  server->on("/api/webClientUpdate", VOID_METHOD_TO_FUNCTION(onWebClientUpdate));
-  server->on("/api/sysInfo", VOID_METHOD_TO_FUNCTION(onSysInfoGet));
-  server->onNotFound(VOID_METHOD_TO_FUNCTION(handleNotFound));
+  server->on("/", HTTPResponse::MIME_HTML, WEB_CLIENT_HTML_FILE_PATH);
+  server->on("/static/js/main.js.gz", HTTPResponse::MIME_JS, WEB_CLIENT_JS_FILE_PATH);
+  server->on("/static/css/main.css.gz", HTTPResponse::MIME_CSS, WEB_CLIENT_CSS_FILE_PATH);
+  server->on("/static/js/main.js", HTTPResponse::MIME_JS, WEB_CLIENT_JS_FILE_PATH);
+  server->on("/static/css/main.css", HTTPResponse::MIME_CSS, WEB_CLIENT_CSS_FILE_PATH);
+  server->on("/api/mode", HTTPRequest::Method::POST, METHOD_TO_HTTP_HANDLER(onModePost));
+  server->on("/api/mode", HTTPRequest::Method::GET, METHOD_TO_HTTP_HANDLER(onModeGet));
+  server->on("/api/saveMode", HTTPRequest::Method::GET, METHOD_TO_HTTP_HANDLER(onSaveModeGet));
+  server->on("/api/loadMode", HTTPRequest::Method::GET, METHOD_TO_HTTP_HANDLER(onLoadModeGet));
+  server->on("/api/listModes", HTTPRequest::Method::GET, METHOD_TO_HTTP_HANDLER(onListModesGet));
+  server->on("/api/options", HTTPRequest::Method::POST, METHOD_TO_HTTP_HANDLER(onOptionsPost));
+  server->on("/api/options", HTTPRequest::Method::GET, METHOD_TO_HTTP_HANDLER(onOptionsGet));
+  server->on("/api/otaUpdate", METHOD_TO_HTTP_HANDLER(onOtaUpdate));
+  server->on("/api/webClientUpdate", METHOD_TO_HTTP_HANDLER(onWebClientUpdate));
+  server->on("/api/sysInfo", METHOD_TO_HTTP_HANDLER(onSysInfoGet));
+  // server->onNotFound(VOID_METHOD_TO_FUNCTION(handleNotFound));
 }
 
 void JsonApi::handleNotFound() {
-  String message = "File Not Found\n\n";
-  message += "URI: ";
-  message += server->uri();
-  message += "\nMethod: ";
-  message += (server->method() == HTTP_GET) ? "GET" : "POST";
-  message += "\nArguments: ";
-  message += server->args();
-  message += "\n";
-  for (uint8_t i = 0; i < server->args(); i++) {
-    message += " " + server->argName(i) + ": " + server->arg(i) + "\n";
-  }
-  server->send(404, "text/plain", message);
+  // String message = "File Not Found\n\n";
+  // message += "URI: ";
+  // message += server->uri();
+  // message += "\nMethod: ";
+  // message += (server->method() == HTTP_GET) ? "GET" : "POST";
+  // message += "\nArguments: ";
+  // message += server->args();
+  // message += "\n";
+  // for (uint8_t i = 0; i < server->args(); i++) {
+  //   message += " " + server->argName(i) + ": " + server->arg(i) + "\n";
+  // }
+  // server->send(404, "text/plain", message);
 }
 
 void JsonApi::initWebServer() {
-  server = new WebServer(context->options->port);
+  server = context->httpServer;
   initUrlMappings();
-  server->begin();
 }
 
-void JsonApi::sendError(const char *message, int httpCode) {
+void JsonApi::sendError(HTTPResponse *response, const char *message, int httpCode) {
   Error error(message);
   Log::mainLogger.err(message);
-  server->send(httpCode, &error);
+  response->send(httpCode, &error);
 }
 
-ErrorCallbackFunctionType JsonApi::getRequestErrorHandler() {
-  return ([=](const char *errorMessage) -> bool { return this->requestErrorHandler(errorMessage); });
+ErrorCallbackFunctionType JsonApi::getRequestErrorHandler(HTTPResponse *response) {
+  return ([=](const char *errorMessage) -> bool { return this->requestErrorHandler(response, errorMessage); });
 }
 
-bool JsonApi::requestErrorHandler(const char *errorMessage) {
-  sendError(errorMessage, HTTP_CODE_WRONG_REQUEST);
+bool JsonApi::requestErrorHandler(HTTPResponse *response, const char *errorMessage) {
+  sendError(response, errorMessage, HTTPResponse::CODE_WRONG_REQUEST);
   Log::mainLogger.err(errorMessage);
   return false;
 }
 
-void JsonApi::onRoot() {
-  if (!SPIFFS.exists(WEB_CLIENT_HTML_FILE)) {
-    sendError("File not found on server!", HTTP_CODE_SERVER_ERROR);
-  }
-  File file = SPIFFS.open(WEB_CLIENT_HTML_FILE, "r");
-  server->streamFile(file, MIME_HTML);
-  file.close();
-}
-
-void JsonApi::onIndexJsGz() {
-  if (!SPIFFS.exists(WEB_CLIENT_JS_FILE)) {
-    sendError("File not found on server!", HTTP_CODE_SERVER_ERROR);
-  }
-  File file = SPIFFS.open(WEB_CLIENT_JS_FILE, "r");
-  server->streamFile(file, MIME_JS);
-  file.close();
-}
-
-void JsonApi::onIndexCssGz() {
-  if (!SPIFFS.exists(WEB_CLIENT_CSS_FILE)) {
-    sendError("File not found on server!", HTTP_CODE_SERVER_ERROR);
-  }
-  File file = SPIFFS.open(WEB_CLIENT_CSS_FILE, "r");
-  server->streamFile(file, MIME_CSS);
-  file.close();
-}
-
-void JsonApi::onModeGet() {
-  server->send(HTTP_CODE_OK, context->mode, getRequestErrorHandler());
+void JsonApi::onModeGet(HTTPRequest *request, HTTPResponse *response) {
+  response->send(HTTPResponse::CODE_OK, context->mode);
   context->autoModeChanging = false;
 }
 
-void JsonApi::onModePost() {
-  if (!server->hasArg(ARG_JSON)) {
-    sendError("Json not found", HTTP_CODE_WRONG_REQUEST);
+void JsonApi::onModePost(HTTPRequest *request, HTTPResponse *response) {
+  if (!request->hasArg(ARG_JSON)) {
+    sendError(response, "Json not found", HTTPResponse::CODE_WRONG_REQUEST);
     return;
   }
   DynamicJsonBuffer jsonBuffer;
-  JsonObject &request = jsonBuffer.parseObject(server->arg(ARG_JSON));
-  if (context->mode->updateEntityFromJson(request, getRequestErrorHandler())) {
+  JsonObject &json = jsonBuffer.parseObject(request->getArg(ARG_JSON));
+  if (context->mode->updateEntityFromJson(json, getRequestErrorHandler(response))) {
     context->autoModeChanging = false;
-    onModeGet();
+    onModeGet(request, response);
   }
 }
 
 // Creates new config for given Index or overrides existing
-void JsonApi::onSaveModeGet() {
-  if (!server->hasArg(ARG_INDEX)) {
-    sendError("Index argument not found", HTTP_CODE_WRONG_REQUEST);
+void JsonApi::onSaveModeGet(HTTPRequest *request, HTTPResponse *response) {
+  if (!request->hasArg(ARG_INDEX)) {
+    sendError(response, "Index argument not found", HTTPResponse::CODE_WRONG_REQUEST);
     return;
   }
-  context->mode->index = server->arg(ARG_INDEX).toInt();
+  context->mode->index = String(request->getArg(ARG_INDEX)).toInt();
   String filepath = MODE_JSON_FILE_PATH(context->mode->index);
-  if (SPIFFS.saveJson(context->mode, filepath, getRequestErrorHandler())) {
-    onModeGet();
+  if (SPIFFS.saveJson(context->mode, filepath, getRequestErrorHandler(response))) {
+    onModeGet(request, response);
   }
 }
 
-void JsonApi::onLoadModeGet() {
-  if (!server->hasArg(ARG_INDEX)) {
-    sendError("Index argument not found", HTTP_CODE_WRONG_REQUEST);
+void JsonApi::onLoadModeGet(HTTPRequest *request, HTTPResponse *response) {
+  if (!request->hasArg(ARG_INDEX)) {
+    sendError(response, "Index argument not found", HTTPResponse::CODE_WRONG_REQUEST);
     return;
   }
-  context->mode->index = server->arg(ARG_INDEX).toInt();
+  context->mode->index = String(request->getArg(ARG_INDEX)).toInt();
 
   DynamicJsonBuffer jsonBuffer;
 
-  if (loadModeFromFS(context->mode->index, getRequestErrorHandler())) {
-    onSaveModeGet();
+  if (loadModeFromFS(context->mode->index, getRequestErrorHandler(response))) {
+    onSaveModeGet(request, response);
   }
 }
 
@@ -147,17 +128,17 @@ JsonObject &JsonApi::loadJsonFromFS(DynamicJsonBuffer *jsonBuffer, String path, 
   return json;
 }
 
-void JsonApi::onListModesGet() {
+void JsonApi::onListModesGet(HTTPRequest *request, HTTPResponse *response) {
   DynamicJsonBuffer jsonBuffer;
-  JsonObject &response = jsonBuffer.createObject();
-  JsonArray &modes = response.createNestedArray("modes");
+  JsonObject &jsonResponse = jsonBuffer.createObject();
+  JsonArray &modes = jsonResponse.createNestedArray("modes");
   char descriptionsBuffer[MODE_INDEX_MAX + 1][MODE_DESCRIPTION_SIZE];
 
   for (uint8_t i = 0; i < MODE_INDEX_MAX; i++) {
     String filepath = MODE_JSON_FILE_PATH(i);
     if (SPIFFS.exists(filepath)) {
       DynamicJsonBuffer loadModeBuffer;
-      JsonObject &json = loadJsonFromFS(&loadModeBuffer, filepath, getRequestErrorHandler());
+      JsonObject &json = loadJsonFromFS(&loadModeBuffer, filepath, getRequestErrorHandler(response));
       if (json == JsonObject::invalid()) {
         return;
       }
@@ -168,21 +149,22 @@ void JsonApi::onListModesGet() {
       mode[JSON_FIELD_MODE_DESCRIPTION] = descriptionsBuffer[i];
     }
   }
-  server->send(HTTP_CODE_OK, &response);
+  response->send(HTTPResponse::CODE_OK, &jsonResponse);
 }
 
-void JsonApi::onOptionsGet() { server->send(HTTP_CODE_OK, context->options, getRequestErrorHandler()); }
+void JsonApi::onOptionsGet(HTTPRequest *request, HTTPResponse *response) { response->send(HTTPResponse::CODE_OK, context->options); }
 
-void JsonApi::onOptionsPost() {
-  if (!server->hasArg(ARG_JSON)) {
-    sendError("Json not found", HTTP_CODE_WRONG_REQUEST);
+void JsonApi::onOptionsPost(HTTPRequest *request, HTTPResponse *response) {
+  if (!request->hasArg(ARG_JSON)) {
+    sendError(response, "Json not found", HTTPResponse::CODE_WRONG_REQUEST);
     return;
   }
   DynamicJsonBuffer jsonBuffer;
-  JsonObject &request = jsonBuffer.parseObject(server->arg(ARG_JSON));
-  if (context->options->updateEntityFromJson(request, getRequestErrorHandler()) && context->options->updateJsonFromEntity(request, getRequestErrorHandler()) &&
-      SPIFFS.saveJson(context->options, OPTIONS_JSON_FILE_PATH, getRequestErrorHandler())) {
-    onOptionsGet();
+  JsonObject &requestJson = jsonBuffer.parseObject(request->getArg(ARG_JSON));
+  if (context->options->updateEntityFromJson(requestJson, getRequestErrorHandler(response)) &&
+      context->options->updateJsonFromEntity(requestJson, getRequestErrorHandler(response)) &&
+      SPIFFS.saveJson(context->options, OPTIONS_JSON_FILE_PATH, getRequestErrorHandler(response))) {
+    onOptionsGet(request, response);
     delay(1000);
     Log::mainLogger.info("Restarting...");
     WiFi.forceSleepBegin();
@@ -190,41 +172,41 @@ void JsonApi::onOptionsPost() {
   }
 }
 
-void JsonApi::onOtaUpdate() {
+void JsonApi::onOtaUpdate(HTTPRequest *request, HTTPResponse *response) {
   ArduinoOTA.setHostname(context->options->domain);
   ArduinoOTA.begin();
   context->otaMode = true;
-  server->send(HTTP_CODE_OK, "text/plain", "Waiting for OTA update\n");
+  response->send(HTTPResponse::CODE_OK, HTTPResponse::MIME_TEXT, "Waiting for OTA update\n");
 }
 
-void JsonApi::onWebClientUpdate() {
+void JsonApi::onWebClientUpdate(HTTPRequest *request, HTTPResponse *response) {
   WebClientUpdater updater([=](const uint8_t status, float progress) {
     Log::mainLogger.infof("Update status %d progress %f", status, progress);
     context->getCurrentAnimation()->showProgress(PROGRESS_BG, PROGRESS_DONE, progress);
   });
-  if (server->hasArg("update") && ((bool)server->arg("update"))) {
-    if (updater.startUpdate(getRequestErrorHandler())) {
-      server->send(HTTP_CODE_OK, "text/plain", "Web client updated\n");
+  if (request->hasArg("update") && ((bool)request->getArg("update"))) {
+    if (updater.startUpdate(getRequestErrorHandler(response))) {
+      response->send(HTTPResponse::CODE_OK, HTTPResponse::MIME_TEXT, "Web client updated\n");
     }
     context->mode->setAnimationMode(context->mode->animationMode);
   } else {
-    UpdaterVersionInfo versionInfo = updater.getVersionInfo(getRequestErrorHandler());
+    UpdaterVersionInfo versionInfo = updater.getVersionInfo(getRequestErrorHandler(response));
     if (versionInfo != UpdaterVersionInfo::invalid) {
       DynamicJsonBuffer jsonBuffer;
       JsonObject &json = jsonBuffer.createObject();
-      if (versionInfo.updateJsonFromEntity(json, getRequestErrorHandler())) {
-        server->send(HTTP_CODE_OK, &json);
+      if (versionInfo.updateJsonFromEntity(json, getRequestErrorHandler(response))) {
+        response->send(HTTPResponse::CODE_OK, &json);
       }
     }
   }
 }
 
-void JsonApi::onSysInfoGet() {
+void JsonApi::onSysInfoGet(HTTPRequest *request, HTTPResponse *response) {
   Esp8266SysInfo sysInfo;
   DynamicJsonBuffer jsonBuffer;
-  JsonObject &response = jsonBuffer.createObject();
+  JsonObject &responseJson = jsonBuffer.createObject();
 
-  if (sysInfo.updateJsonFromEntity(response, getRequestErrorHandler())) {
-    server->send(HTTP_CODE_OK, &response);
+  if (sysInfo.updateJsonFromEntity(responseJson, getRequestErrorHandler(response))) {
+    response->send(HTTPResponse::CODE_OK, &responseJson);
   }
 }

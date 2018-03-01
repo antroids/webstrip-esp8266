@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include <stdarg.h>
 
-#define LOG_BUFFER_SIZE 256
+#define LOG_BUFFER_SIZE 512
 
 #ifndef LOG_DEFAULT_LEVEL
 #define LOG_DEFAULT_LEVEL INFO
@@ -46,7 +46,7 @@ public:
     }
     char buf[LOG_BUFFER_SIZE];
     sprintf(buf, "[%s] %.5lu : %s", getLevelName(level), millis(), message);
-    log(message);
+    log(buf);
   }
   void info(const char *message) { log(message, INFO); }
   void warn(const char *message) { log(message, WARN); }
