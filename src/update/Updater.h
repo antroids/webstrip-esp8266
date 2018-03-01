@@ -5,11 +5,9 @@
 
 typedef std::function<void(const uint8_t, float)> UpdaterStatusCallbackFunctionType;
 
-#define UPDATER_STATUS_BEFORE 0
 #define UPDATER_STATUS_START 1
 #define UPDATER_STATUS_PROGRESS 2
 #define UPDATER_STATUS_END 3
-#define UPDATER_STATUS_AFTER 4
 
 class Updater {
 public:
@@ -17,22 +15,19 @@ public:
 
   bool startUpdate(ErrorCallbackFunctionType errorCallback) {
     bool result = true;
-    statusCallback(UPDATER_STATUS_BEFORE, 0);
-    result = before(errorCallback) && result;
     statusCallback(UPDATER_STATUS_START, 0);
-    result = update(errorCallback) && result;
-    statusCallback(UPDATER_STATUS_END, 1);
-    result = after(errorCallback) && result;
-    statusCallback(UPDATER_STATUS_AFTER, 1);
-    return true;
+    result = update(errorCallback);
+    if (result) {
+      statusCallback(UPDATER_STATUS_END, 1);
+    }
+
+    return result;
   }
 
 protected:
   UpdaterStatusCallbackFunctionType statusCallback;
 
-  virtual bool before(ErrorCallbackFunctionType errorCallback) {}
   virtual bool update(ErrorCallbackFunctionType errorCallback) {}
-  virtual bool after(ErrorCallbackFunctionType errorCallback) {}
 };
 
 #endif

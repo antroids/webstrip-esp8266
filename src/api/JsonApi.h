@@ -47,6 +47,7 @@ protected:
   void onOptionsGet(HTTPRequest *request, HTTPResponse *response);
   void onOtaUpdate(HTTPRequest *request, HTTPResponse *response);
   void onWebClientUpdate(HTTPRequest *request, HTTPResponse *response);
+  void onFirmwareUpdate(HTTPRequest *request, HTTPResponse *response);
   void onSysInfoGet(HTTPRequest *request, HTTPResponse *response);
 
   void handleNotFound();

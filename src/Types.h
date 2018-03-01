@@ -5,6 +5,10 @@
 
 #define VOID_METHOD_TO_FUNCTION(M) ([=]() { return this->M(); })
 
+// Error callback function bool onError(const char *errorMessage)
+// Return value should be used as result of failed function
+// If return value of function is false, then operation failed and error handled
+//   else function executed successfully
 typedef std::function<bool(const char *)> ErrorCallbackFunctionType;
 
 typedef uint16_t led_index_t;

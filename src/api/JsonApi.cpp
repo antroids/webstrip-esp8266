@@ -1,4 +1,5 @@
 #include "../Context.h"
+#include "../update/FirmwareUpdater.h"
 #include "../update/WebClientUpdater.h"
 #include "../web/HTTPServer.h"
 #include "JsonApi.h"
@@ -24,6 +25,7 @@ void JsonApi::initUrlMappings() {
   server->on("/api/options", HTTPRequest::Method::GET, METHOD_TO_HTTP_HANDLER(onOptionsGet));
   server->on("/api/otaUpdate", METHOD_TO_HTTP_HANDLER(onOtaUpdate));
   server->on("/api/webClientUpdate", METHOD_TO_HTTP_HANDLER(onWebClientUpdate));
+  server->on("/api/firmwareUpdate", METHOD_TO_HTTP_HANDLER(onFirmwareUpdate));
   server->on("/api/sysInfo", METHOD_TO_HTTP_HANDLER(onSysInfoGet));
   // server->onNotFound(VOID_METHOD_TO_FUNCTION(handleNotFound));
 }
@@ -189,6 +191,30 @@ void JsonApi::onWebClientUpdate(HTTPRequest *request, HTTPResponse *response) {
       response->send(HTTPResponse::CODE_OK, HTTPResponse::MIME_TEXT, "Web client updated\n");
     }
     context->mode->setAnimationMode(context->mode->animationMode);
+  } else {
+    UpdaterVersionInfo versionInfo = updater.getVersionInfo(getRequestErrorHandler(response));
+    if (versionInfo != UpdaterVersionInfo::invalid) {
+      DynamicJsonBuffer jsonBuffer;
+      JsonObject &json = jsonBuffer.createObject();
+      if (versionInfo.updateJsonFromEntity(json, getRequestErrorHandler(response))) {
+        response->send(HTTPResponse::CODE_OK, &json);
+      }
+    }
+  }
+}
+
+void JsonApi::onFirmwareUpdate(HTTPRequest *request, HTTPResponse *response) {
+  FirmwareUpdater updater([=](const uint8_t status, float progress) {
+    Log::mainLogger.infof("Update status %d progress %f", status, progress);
+    context->getCurrentAnimation()->showProgress(PROGRESS_BG, PROGRESS_DONE, progress);
+    if (status == UPDATER_STATUS_END) {
+      response->send(HTTPResponse::CODE_OK, HTTPResponse::MIME_TEXT, "Firmware updated\n");
+    }
+  });
+  if (request->hasArg("update") && ((bool)request->getArg("update"))) {
+    if (updater.startUpdate(getRequestErrorHandler(response))) {
+      response->send(HTTPResponse::CODE_OK, HTTPResponse::MIME_TEXT, "Firmware updated\n");
+    }
   } else {
     UpdaterVersionInfo versionInfo = updater.getVersionInfo(getRequestErrorHandler(response));
     if (versionInfo != UpdaterVersionInfo::invalid) {

@@ -49,10 +49,7 @@ public:
   void send(http_code_t code, JsonEntity *jsonEntity);
 
   bool isSent() { return sent; }
-  void reset() {
-    Log::mainLogger.info("Resetting response");
-    sent = false;
-  }
+  void reset() { sent = false; }
 
 protected:
   ESP8266WebServerWrapper *server;
