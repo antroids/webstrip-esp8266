@@ -15,10 +15,12 @@ void ESP8266HTTPClientResponse::close() { client->clientImpl.end(); }
 const char *ESP8266HTTPClientResponse::getErrorMessage() { return errorMessage; }
 
 ESP8266HTTPClient::RequestBuilder *ESP8266HTTPClient::ESP8266HTTPRequestBuilder::url(const char *url) {
+  Log::mainLogger.infof("Setting url '%s'", url);
   _url = url;
   return this;
 }
 ESP8266HTTPClient::RequestBuilder *ESP8266HTTPClient::ESP8266HTTPRequestBuilder::get() {
+  Log::mainLogger.info("Method GET");
   method = GET;
   return this;
 }
@@ -28,6 +30,9 @@ bool ESP8266HTTPClient::ESP8266HTTPRequestBuilder::validate() {
     strcpy(response->errorMessage, "URL required!");
     return false;
   }
+
+  Log::mainLogger.info("Builder validated");
+  return true;
 }
 
 HTTPClientResponse *ESP8266HTTPClient::ESP8266HTTPRequestBuilder::sendRequest() {
@@ -58,6 +63,7 @@ HTTPClientResponse *ESP8266HTTPClient::ESP8266HTTPRequestBuilder::sendRequest() 
 }
 
 void ESP8266HTTPClient::ESP8266HTTPRequestBuilder::clear() {
+  Log::mainLogger.info("Builder clearing");
   method = GET;
   _url = NULL;
 }

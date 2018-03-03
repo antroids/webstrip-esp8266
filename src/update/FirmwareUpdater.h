@@ -14,9 +14,11 @@ public:
 
 protected:
   bool update(ErrorCallbackFunctionType errorCallback) {
+    Log::mainLogger.info("Firmware update started");
     if (!downloadFirmware(FIRMWARE_URL, errorCallback)) {
       return false;
     }
+    Log::mainLogger.info("Firmware downloaded");
 
     statusCallback(UPDATER_STATUS_PROGRESS, 0.90);
     UpdaterVersionInfo versionInfo = getVersionInfo(errorCallback);

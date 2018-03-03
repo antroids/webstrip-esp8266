@@ -24,6 +24,7 @@ public:
   virtual RequestBuilder *getRequestBuilder() = 0;
 
   bool downloadResource(const char *url, const char *filePath, ErrorCallbackFunctionType errorCallback) {
+    Log::mainLogger.info("Downloading resource");
     HTTPClientResponse *response = getRequestBuilder()->url(url)->get()->sendRequest();
 
     if (response->getCode() == HTTP::CODE_OK) {
@@ -34,6 +35,7 @@ public:
       response->writeToStream(fileStream);
       file.close();
     } else if (response->getCode() < 0) {
+      Log::mainLogger.errf("Internal error: '%s'", response->getErrorMessage());
       response->close();
       return errorCallback(response->getErrorMessage());
     } else {

@@ -8,7 +8,9 @@ UpdaterVersionInfo HTTPUpdater::getVersionInfo(ErrorCallbackFunctionType errorCa
   char buf[TEMP_FILE_MAX_LENGTH] = {0};
 
   if (SPIFFS.exists(getVersionInfoFilePath())) {
-    if (SPIFFS.loadJson(&current, getVersionInfoFilePath(), errorCallback)) {
+    Log::mainLogger.info("Version info file found");
+    if (!SPIFFS.loadJson(&current, getVersionInfoFilePath(), errorCallback)) {
+      Log::mainLogger.err("Cannot open version info file");
       return UpdaterVersionInfo::invalid;
     }
   } else {

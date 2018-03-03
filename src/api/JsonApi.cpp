@@ -217,6 +217,7 @@ void JsonApi::onFirmwareUpdate(HTTPRequest *request, HTTPResponse *response) {
       ESP.restart(); // add abstraction layer
     }
   } else {
+    Log::mainLogger.info("Firmware version info request");
     UpdaterVersionInfo versionInfo = updater.getVersionInfo(getRequestErrorHandler(response));
     if (versionInfo != UpdaterVersionInfo::invalid) {
       DynamicJsonBuffer jsonBuffer;
