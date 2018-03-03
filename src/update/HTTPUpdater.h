@@ -4,9 +4,9 @@
 #include "../FileSystem.h"
 #include "../Log.h"
 #include "../domain/JsonEntity.h"
+#include "../web/HTTPClient.h"
 #include "Updater.h"
 #include "limits.h"
-#include <ESP8266HTTPClient.h>
 
 struct UpdaterVersionInfo : public JsonEntity {
 public:
@@ -38,17 +38,13 @@ class HTTPUpdater : public Updater {
 public:
   UpdaterVersionInfo getVersionInfo(ErrorCallbackFunctionType errorCallback);
 
-  bool saveFile(const char *url, const char *filePath, ErrorCallbackFunctionType errorCallback);
-
   virtual const char *getVersionInfoUrl() = 0;
   virtual const char *getVersionInfoFilePath() = 0;
 
-  HTTPUpdater(UpdaterStatusCallbackFunctionType sc) : Updater(sc) {
-    client.setTimeout(20000); // 20 seconds
-  }
+  HTTPUpdater(WebStrip::HTTPClient *_client, UpdaterStatusCallbackFunctionType sc) : Updater(sc), client(_client) {}
 
 protected:
-  HTTPClient client;
+  WebStrip::HTTPClient *client;
 };
 
 #endif

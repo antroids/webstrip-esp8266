@@ -1,9 +1,9 @@
-#ifndef WEB_ESP_8266_HTTP_SERVER_H
-#define WEB_ESP_8266_HTTP_SERVER_H
+#ifndef IMPL_ESP_8266_HTTP_SERVER_H
+#define IMPL_ESP_8266_HTTP_SERVER_H
 
 #include "../FileSystem.h"
 #include "../Log.h"
-#include "HTTPServer.h"
+#include "../web/HTTPServer.h"
 #include <ESP8266WebServer.h>
 #include <detail/RequestHandlersImpl.h>
 

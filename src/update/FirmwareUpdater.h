@@ -10,7 +10,7 @@
 
 class FirmwareUpdater : public HTTPUpdater {
 public:
-  FirmwareUpdater(UpdaterStatusCallbackFunctionType sc) : HTTPUpdater(sc) {}
+  FirmwareUpdater(WebStrip::HTTPClient *_client, UpdaterStatusCallbackFunctionType sc) : HTTPUpdater(_client, sc) {}
 
 protected:
   bool update(ErrorCallbackFunctionType errorCallback) {
@@ -25,7 +25,7 @@ protected:
     }
     statusCallback(UPDATER_STATUS_PROGRESS, 0.95);
     versionInfo.currentVersion = versionInfo.availableVersion;
-    if (!SPIFFS.saveJson(&versionInfo, FIRMWARE_VERSION_URL, errorCallback)) {
+    if (!SPIFFS.saveJson(&versionInfo, FIRMWARE_VERSION_FILE, errorCallback)) {
       return errorCallback("Can't save Firmware version json");
     }
     if (!Update.end()) {
@@ -34,37 +34,32 @@ protected:
     }
     Log::mainLogger.info("Firmware updated");
     statusCallback(UPDATER_STATUS_END, 1);
-    ESP.restart(); // add abstraction layer
     return true;
   }
 
   bool downloadFirmware(const char *url, ErrorCallbackFunctionType errorCallback) {
-    HTTPClient client;
-
-    client.begin(url);
+    HTTPClientResponse *response = client->getRequestBuilder()->url(url)->get()->sendRequest();
     Log::mainLogger.infof("URL opened '%s'", url);
-    int httpCode = client.GET();
-    bool result = true;
     float progress = 0;
-    if (httpCode == HTTP_CODE_OK) {
-      int len = client.getSize();
+    if (response->getCode() == HTTP::CODE_OK) {
+      int len = response->getContentLength();
       int targetLen = len;
       uint8_t buff[512] = {0};
-      WiFiClient *stream = client.getStreamPtr();
+      Stream *stream = response->getContentStream();
 
       Log::mainLogger.infof("Firmware size %d", len);
       if (len <= 0) {
         errorCallback("Cannot get firmware size from server!");
-        client.end();
+        response->close();
         return false;
       }
       if (!Update.begin(len)) {
         Log::mainLogger.errf("Cannot begin firmware update, error %u", Update.getError());
         errorCallback("Cannot begin firmware update");
-        client.end();
+        response->close();
         return false;
       }
-      while (client.connected() && len > 0) {
+      while (response->isConnected() && len > 0) {
         size_t size = stream->available();
         Log::mainLogger.infof("Firmware downloading, available %d", size);
         if (size) {
@@ -72,23 +67,27 @@ protected:
           Update.write(buff, c);
           if (len > 0) {
             len -= c;
-            float localProgress = ((float)len / targetLen) * 0.9;
+            float localProgress = (((float)len) / targetLen) * 0.9;
             if (localProgress - progress > 0.01) {
               progress = localProgress;
               statusCallback(UPDATER_STATUS_PROGRESS, progress);
             }
           }
         }
-        delay(10);
+        delay(1);
       }
+    } else if (response->getCode() < 0) {
+      response->close();
+      return errorCallback(response->getErrorMessage());
     } else {
       char messageBuffer[256];
-      sprintf(messageBuffer, "'%s' code is %d", url, httpCode);
-      result = errorCallback(messageBuffer);
+      sprintf(messageBuffer, "'%s' code is %d", url, response->getCode());
+      response->close();
+      return errorCallback(messageBuffer);
     }
-    client.end();
+    response->close();
     Log::mainLogger.infof("Firmware downloaded from '%s'", url);
-    return result;
+    return true;
   }
 
   const char *getVersionInfoUrl() { return FIRMWARE_VERSION_URL; }

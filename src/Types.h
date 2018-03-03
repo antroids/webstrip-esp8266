@@ -11,6 +11,8 @@
 //   else function executed successfully
 typedef std::function<bool(const char *)> ErrorCallbackFunctionType;
 
+typedef std::function<void(float)> ProgressListenerFunctionType;
+
 typedef uint16_t led_index_t;
 typedef uint16_t index_id_t;
 

@@ -7,7 +7,7 @@ void ESP8266WebServerWrapper::send(http_code_t code, JsonObject *jsonObject) {
   String header;
   const size_t length = jsonObject->measureLength();
   setupResponseHeaders();
-  _prepareHeader(header, code, HTTPResponse::MIME_JSON, length);
+  _prepareHeader(header, code, HTTP::MIME_JSON, length);
   _currentClient.write(header.c_str(), header.length());
   if (length) {
     jsonObject->printTo(_currentClient);
@@ -161,7 +161,7 @@ HTTPServer::HTTPServerHandlerFunction ESP8266HTTPServer::getFileContentHandler(E
     } else {
       Log::mainLogger.info("FileContentHandler: file not found");
       Error error("File not found");
-      response->send(HTTPResponse::CODE_NOT_FOUND, &error);
+      response->send(HTTP::CODE_NOT_FOUND, &error);
     }
   };
 }

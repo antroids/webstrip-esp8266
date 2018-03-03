@@ -1,13 +1,14 @@
 #ifndef CONTEXT_H
 #define CONTEXT_H
 
+#include "WebStripFactory.h"
+
 #include "animation/Animation.h"
 #include "api/JsonApi.h"
 #include "domain/ColorSelectionMode.h"
 #include "domain/LedStripMode.h"
 #include "domain/Options.h"
-
-#include "web/ESP8266HTTPServer.h"
+#include "web/HTTPClient.h"
 
 #include "animation/ExplosionsAnimation.h"
 #include "animation/FadeAnimation.h"
@@ -23,6 +24,8 @@
 
 class Context {
 public:
+  WebStripFactory *factory;
+
   // Animations
   NeoPixelAnimator *animator;
   LedColorAnimationState *ledColorAnimationState;
@@ -32,6 +35,7 @@ public:
   Options *options;
 
   HTTPServer *httpServer;
+  WebStrip::HTTPClient *httpClient = NULL;
   JsonApi *api;
 
   bool otaMode = false;
@@ -48,7 +52,8 @@ public:
   ColorSelectionMode *colorSelectionModes[4] = {new AscPaletteColorSelectionMode(), new RandPaletteColorSelectionMode(), new RandColorSelectionMode(),
                                                 new AscPaletteStretchColorSelectionMode()};
 
-  Context(Options _options) {
+  Context(WebStripFactory *_factory, Options _options) {
+    factory = _factory;
     options = new Options();
     options->pixelCount = _options.pixelCount;
     strncpy(options->domain, _options.domain, JSON_FIELD_OPTIONS_DOMAIN_SIZE);
@@ -63,12 +68,14 @@ public:
     mode = new LedStripMode();
     initDefaultMode();
 
-    httpServer = new ESP8266HTTPServer(options->port);
+    httpServer = factory->buildHTTPServer(options->port);
+    httpClient = factory->buildHTTPClient();
     api = new JsonApi(this);
   }
 
   ~Context() {
     delete api;
+    delete httpClient;
     delete httpServer;
     delete mode;
     delete animator;

@@ -1,10 +1,11 @@
 #include <Arduino.h>
 
+#include "impl/ESP8266Factory.h"
+
 #include "FileSystem.h"
 #include <ArduinoJson.h>
 #include <ArduinoOTA.h>
 #include <DNSServer.h>
-#include <ESP8266HTTPClient.h>
 #include <ESP8266WiFi.h> //https://github.com/esp8266/Arduino
 #include <ESP8266mDNS.h>
 #include <WiFiManager.h> //https://github.com/tzapu/WiFiManager
@@ -88,7 +89,7 @@ void setup() {
   WiFiManager wifiManager;
   wifiManager.autoConnect(options.domain);
   Log::mainLogger.info("WiFiManager setup complete");
-  context = new Context(options);
+  context = new Context(new ESP8266Factory(), options);
   initOTA();
   Log::mainLogger.info("OTA setup completed");
   initMDNS();

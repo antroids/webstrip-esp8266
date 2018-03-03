@@ -1,6 +1,7 @@
 #ifndef WEB_HTTP_SERVER_H
 #define WEB_HTTP_SERVER_H
 
+#include "HTTPDefinitions.h"
 #include "HTTPRequest.h"
 #include "HTTPResponse.h"
 #include <functional>

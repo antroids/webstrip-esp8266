@@ -3,9 +3,8 @@
 
 #include "../Types.h"
 #include "../domain/JsonEntity.h"
+#include "HTTPDefinitions.h"
 #include <ArduinoJson.h>
-
-typedef uint16_t http_code_t;
 
 /**
  * Abstract HTTPResponse class
@@ -37,17 +36,6 @@ public:
    * @return response sent
    */
   virtual bool isSent() = 0;
-
-  static const char *MIME_JS;
-  static const char *MIME_CSS;
-  static const char *MIME_HTML;
-  static const char *MIME_JSON;
-  static const char *MIME_TEXT;
-
-  static const http_code_t CODE_OK;
-  static const http_code_t CODE_NOT_FOUND;
-  static const http_code_t CODE_SERVER_ERROR;
-  static const http_code_t CODE_WRONG_REQUEST;
 };
 
 #endif

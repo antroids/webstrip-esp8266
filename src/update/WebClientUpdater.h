@@ -18,7 +18,7 @@
 
 class WebClientUpdater : public HTTPUpdater {
 public:
-  WebClientUpdater(UpdaterStatusCallbackFunctionType sc) : HTTPUpdater(sc) {}
+  WebClientUpdater(WebStrip::HTTPClient *_client, UpdaterStatusCallbackFunctionType sc) : HTTPUpdater(_client, sc) {}
 
 protected:
   bool update(ErrorCallbackFunctionType errorCallback) {
@@ -28,7 +28,7 @@ protected:
     bool result = true;
 
     SPIFFS.generateTempFileName(tempHtmlFileName);
-    if (!saveFile(WEB_CLIENT_HTML_URL, tempHtmlFileName, errorCallback)) {
+    if (!client->downloadResource(WEB_CLIENT_HTML_URL, tempHtmlFileName, errorCallback)) {
       SPIFFS.remove(tempHtmlFileName);
       Log::mainLogger.errf("Can't download from %s to %s", WEB_CLIENT_HTML_URL, tempHtmlFileName);
       return false;
@@ -36,7 +36,7 @@ protected:
     statusCallback(UPDATER_STATUS_PROGRESS, 0.15);
     Log::mainLogger.infof("File downloaded from %s to %s", WEB_CLIENT_HTML_URL, tempHtmlFileName);
     SPIFFS.generateTempFileName(tempJsFileName);
-    if (!saveFile(WEB_CLIENT_JS_URL, tempJsFileName, errorCallback)) {
+    if (!client->downloadResource(WEB_CLIENT_JS_URL, tempJsFileName, errorCallback)) {
       SPIFFS.remove(tempHtmlFileName);
       SPIFFS.remove(tempJsFileName);
       Log::mainLogger.errf("Can't download from %s to %s", WEB_CLIENT_JS_URL, tempJsFileName);
@@ -45,7 +45,7 @@ protected:
     statusCallback(UPDATER_STATUS_PROGRESS, 0.50);
     Log::mainLogger.infof("File downloaded from %s to %s", WEB_CLIENT_JS_URL, tempJsFileName);
     SPIFFS.generateTempFileName(tempCssFileName);
-    if (!saveFile(WEB_CLIENT_CSS_URL, tempCssFileName, errorCallback)) {
+    if (!client->downloadResource(WEB_CLIENT_CSS_URL, tempCssFileName, errorCallback)) {
       SPIFFS.remove(tempHtmlFileName);
       SPIFFS.remove(tempJsFileName);
       SPIFFS.remove(tempCssFileName);

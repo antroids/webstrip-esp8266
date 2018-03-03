@@ -11,11 +11,11 @@ const char *JsonApi::WEB_CLIENT_CSS_FILE_PATH = "/web/static/css/main.css.gz";
 void JsonApi::handleUpdate() { server->handleUpdate(); }
 
 void JsonApi::initUrlMappings() {
-  server->on("/", HTTPResponse::MIME_HTML, WEB_CLIENT_HTML_FILE_PATH);
-  server->on("/static/js/main.js.gz", HTTPResponse::MIME_JS, WEB_CLIENT_JS_FILE_PATH);
-  server->on("/static/css/main.css.gz", HTTPResponse::MIME_CSS, WEB_CLIENT_CSS_FILE_PATH);
-  server->on("/static/js/main.js", HTTPResponse::MIME_JS, WEB_CLIENT_JS_FILE_PATH);
-  server->on("/static/css/main.css", HTTPResponse::MIME_CSS, WEB_CLIENT_CSS_FILE_PATH);
+  server->on("/", HTTP::MIME_HTML, WEB_CLIENT_HTML_FILE_PATH);
+  server->on("/static/js/main.js.gz", HTTP::MIME_JS, WEB_CLIENT_JS_FILE_PATH);
+  server->on("/static/css/main.css.gz", HTTP::MIME_CSS, WEB_CLIENT_CSS_FILE_PATH);
+  server->on("/static/js/main.js", HTTP::MIME_JS, WEB_CLIENT_JS_FILE_PATH);
+  server->on("/static/css/main.css", HTTP::MIME_CSS, WEB_CLIENT_CSS_FILE_PATH);
   server->on("/api/mode", HTTPRequest::Method::POST, METHOD_TO_HTTP_HANDLER(onModePost));
   server->on("/api/mode", HTTPRequest::Method::GET, METHOD_TO_HTTP_HANDLER(onModeGet));
   server->on("/api/saveMode", HTTPRequest::Method::GET, METHOD_TO_HTTP_HANDLER(onSaveModeGet));
@@ -61,19 +61,19 @@ ErrorCallbackFunctionType JsonApi::getRequestErrorHandler(HTTPResponse *response
 }
 
 bool JsonApi::requestErrorHandler(HTTPResponse *response, const char *errorMessage) {
-  sendError(response, errorMessage, HTTPResponse::CODE_WRONG_REQUEST);
+  sendError(response, errorMessage, HTTP::CODE_WRONG_REQUEST);
   Log::mainLogger.err(errorMessage);
   return false;
 }
 
 void JsonApi::onModeGet(HTTPRequest *request, HTTPResponse *response) {
-  response->send(HTTPResponse::CODE_OK, context->mode);
+  response->send(HTTP::CODE_OK, context->mode);
   context->autoModeChanging = false;
 }
 
 void JsonApi::onModePost(HTTPRequest *request, HTTPResponse *response) {
   if (!request->hasArg(ARG_JSON)) {
-    sendError(response, "Json not found", HTTPResponse::CODE_WRONG_REQUEST);
+    sendError(response, "Json not found", HTTP::CODE_WRONG_REQUEST);
     return;
   }
   DynamicJsonBuffer jsonBuffer;
@@ -87,7 +87,7 @@ void JsonApi::onModePost(HTTPRequest *request, HTTPResponse *response) {
 // Creates new config for given Index or overrides existing
 void JsonApi::onSaveModeGet(HTTPRequest *request, HTTPResponse *response) {
   if (!request->hasArg(ARG_INDEX)) {
-    sendError(response, "Index argument not found", HTTPResponse::CODE_WRONG_REQUEST);
+    sendError(response, "Index argument not found", HTTP::CODE_WRONG_REQUEST);
     return;
   }
   context->mode->index = String(request->getArg(ARG_INDEX)).toInt();
@@ -99,7 +99,7 @@ void JsonApi::onSaveModeGet(HTTPRequest *request, HTTPResponse *response) {
 
 void JsonApi::onLoadModeGet(HTTPRequest *request, HTTPResponse *response) {
   if (!request->hasArg(ARG_INDEX)) {
-    sendError(response, "Index argument not found", HTTPResponse::CODE_WRONG_REQUEST);
+    sendError(response, "Index argument not found", HTTP::CODE_WRONG_REQUEST);
     return;
   }
   context->mode->index = String(request->getArg(ARG_INDEX)).toInt();
@@ -151,14 +151,14 @@ void JsonApi::onListModesGet(HTTPRequest *request, HTTPResponse *response) {
       mode[JSON_FIELD_MODE_DESCRIPTION] = descriptionsBuffer[i];
     }
   }
-  response->send(HTTPResponse::CODE_OK, &jsonResponse);
+  response->send(HTTP::CODE_OK, &jsonResponse);
 }
 
-void JsonApi::onOptionsGet(HTTPRequest *request, HTTPResponse *response) { response->send(HTTPResponse::CODE_OK, context->options); }
+void JsonApi::onOptionsGet(HTTPRequest *request, HTTPResponse *response) { response->send(HTTP::CODE_OK, context->options); }
 
 void JsonApi::onOptionsPost(HTTPRequest *request, HTTPResponse *response) {
   if (!request->hasArg(ARG_JSON)) {
-    sendError(response, "Json not found", HTTPResponse::CODE_WRONG_REQUEST);
+    sendError(response, "Json not found", HTTP::CODE_WRONG_REQUEST);
     return;
   }
   DynamicJsonBuffer jsonBuffer;
@@ -178,17 +178,17 @@ void JsonApi::onOtaUpdate(HTTPRequest *request, HTTPResponse *response) {
   ArduinoOTA.setHostname(context->options->domain);
   ArduinoOTA.begin();
   context->otaMode = true;
-  response->send(HTTPResponse::CODE_OK, HTTPResponse::MIME_TEXT, "Waiting for OTA update\n");
+  response->send(HTTP::CODE_OK, HTTP::MIME_TEXT, "Waiting for OTA update\n");
 }
 
 void JsonApi::onWebClientUpdate(HTTPRequest *request, HTTPResponse *response) {
-  WebClientUpdater updater([=](const uint8_t status, float progress) {
+  WebClientUpdater updater(context->httpClient, [=](const uint8_t status, float progress) {
     Log::mainLogger.infof("Update status %d progress %f", status, progress);
     context->getCurrentAnimation()->showProgress(PROGRESS_BG, PROGRESS_DONE, progress);
   });
   if (request->hasArg("update") && ((bool)request->getArg("update"))) {
     if (updater.startUpdate(getRequestErrorHandler(response))) {
-      response->send(HTTPResponse::CODE_OK, HTTPResponse::MIME_TEXT, "Web client updated\n");
+      response->send(HTTP::CODE_OK, HTTP::MIME_TEXT, "Web client updated\n");
     }
     context->mode->setAnimationMode(context->mode->animationMode);
   } else {
@@ -197,23 +197,24 @@ void JsonApi::onWebClientUpdate(HTTPRequest *request, HTTPResponse *response) {
       DynamicJsonBuffer jsonBuffer;
       JsonObject &json = jsonBuffer.createObject();
       if (versionInfo.updateJsonFromEntity(json, getRequestErrorHandler(response))) {
-        response->send(HTTPResponse::CODE_OK, &json);
+        response->send(HTTP::CODE_OK, &json);
       }
     }
   }
 }
 
 void JsonApi::onFirmwareUpdate(HTTPRequest *request, HTTPResponse *response) {
-  FirmwareUpdater updater([=](const uint8_t status, float progress) {
+  FirmwareUpdater updater(context->httpClient, [=](const uint8_t status, float progress) {
     Log::mainLogger.infof("Update status %d progress %f", status, progress);
     context->getCurrentAnimation()->showProgress(PROGRESS_BG, PROGRESS_DONE, progress);
     if (status == UPDATER_STATUS_END) {
-      response->send(HTTPResponse::CODE_OK, HTTPResponse::MIME_TEXT, "Firmware updated\n");
+      response->send(HTTP::CODE_OK, HTTP::MIME_TEXT, "Firmware updated\n");
     }
   });
   if (request->hasArg("update") && ((bool)request->getArg("update"))) {
     if (updater.startUpdate(getRequestErrorHandler(response))) {
-      response->send(HTTPResponse::CODE_OK, HTTPResponse::MIME_TEXT, "Firmware updated\n");
+      response->send(HTTP::CODE_OK, HTTP::MIME_TEXT, "Firmware updated\n");
+      ESP.restart(); // add abstraction layer
     }
   } else {
     UpdaterVersionInfo versionInfo = updater.getVersionInfo(getRequestErrorHandler(response));
@@ -221,7 +222,7 @@ void JsonApi::onFirmwareUpdate(HTTPRequest *request, HTTPResponse *response) {
       DynamicJsonBuffer jsonBuffer;
       JsonObject &json = jsonBuffer.createObject();
       if (versionInfo.updateJsonFromEntity(json, getRequestErrorHandler(response))) {
-        response->send(HTTPResponse::CODE_OK, &json);
+        response->send(HTTP::CODE_OK, &json);
       }
     }
   }
@@ -233,6 +234,6 @@ void JsonApi::onSysInfoGet(HTTPRequest *request, HTTPResponse *response) {
   JsonObject &responseJson = jsonBuffer.createObject();
 
   if (sysInfo.updateJsonFromEntity(responseJson, getRequestErrorHandler(response))) {
-    response->send(HTTPResponse::CODE_OK, &responseJson);
+    response->send(HTTP::CODE_OK, &responseJson);
   }
 }
